@@ -1,0 +1,5 @@
+# Copyrighted Bible text data — kept locally only, not version-controlled.
+bible.json
+
+# Local timestamped snapshots — superseded by git history.
+backups/

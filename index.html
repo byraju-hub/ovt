@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OVT — One Verse Tool</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;200;300;400;500;600;700;800;900&family=Noto+Serif+KR:wght@200;300;400;500;600;700;800;900&family=Nanum+Gothic:wght@400;700;800&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Nanum+Brush+Script&family=Do+Hyeon&family=Black+Han+Sans&family=Jua&family=Gaegu:wght@300;400;700&family=Gamja+Flower&family=Poor+Story&family=Song+Myung&family=Stylish&family=Sunflower:wght@300;500;700&family=Cute+Font&family=East+Sea+Dokdo&family=Hi+Melody&family=Kirang+Haerang&family=Yeon+Sung&family=Single+Day&family=Dokdo&family=Gothic+A1:wght@100;200;300;400;500;600;700;800;900&family=IBM+Plex+Sans+KR:wght@100;200;300;400;500;600;700&family=Gowun+Dodum&family=Gowun+Batang:wght@400;700&family=Gugi&family=Hahmlet:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1b1c20; --panel:#232429; --panel2:#2b2d33; --line:#383a42;
+    --text:#eceef2; --sub:#9aa0ac; --accent:#5b8cff; --accent2:#ff5b7a;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans KR",system-ui,sans-serif;font-size:14px;}
+  header{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:12px;}
+  header h1{font-size:18px;margin:0;letter-spacing:.3px;}
+  header p{margin:0;color:var(--sub);font-size:12.5px;}
+  #saveIndicator{margin-left:auto;color:var(--sub);font-size:12px;white-space:nowrap;}
+  main{padding:20px 24px 60px;max-width:1200px;margin:0 auto;}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:18px;}
+  .panel h2{font-size:13px;margin:0 0 12px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+  .row:last-child{margin-bottom:0;}
+  label.small{color:var(--sub);font-size:12px;min-width:40px;}
+  input[type=range]{flex:1;min-width:120px;}
+  button, a.btn{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:7px 12px;border-radius:7px;cursor:pointer;font-size:12.5px;font-family:inherit;text-decoration:none;display:inline-block;}
+  button:hover, a.btn:hover{border-color:var(--accent);}
+  button.primary, a.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
+  button.primary:hover, a.btn.primary:hover{opacity:.9;}
+  button.danger:hover, a.btn.danger:hover{border-color:var(--accent2);}
+  button.toggle-on, a.btn.toggle-on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  button.small, a.btn.small{padding:4px 8px;font-size:11.5px;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  input[type=file]{color:var(--sub);font-size:12px;max-width:220px;}
+
+  .editor{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;}
+  .canvas-col{flex:0 0 480px;max-width:100%;}
+  .canvas-wrap{position:relative;width:100%;aspect-ratio:1/1;background:repeating-conic-gradient(#2a2b31 0% 25%, #232429 0% 50%) 0/20px 20px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);}
+  canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab;}
+  canvas.dragging{cursor:grabbing;}
+  .canvas-col .col-actions{display:flex;gap:8px;margin-top:10px;}
+  .panels-col{flex:1 1 360px;min-width:300px;}
+
+  .layer-card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:12px;}
+  .layer-card .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .layer-card .head strong{font-size:12.5px;}
+  .fixed-note{background:var(--bg);border:1px dashed var(--line);border-radius:6px;padding:8px;color:var(--sub);font-size:12.5px;margin-bottom:8px;}
+  textarea{width:100%;resize:vertical;min-height:44px;background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:13px;}
+  select, input[type=number], input[type=color]{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px 6px;font-family:inherit;font-size:12px;}
+  select{max-width:150px;}
+  input[type=number]{width:56px;}
+  input[type=color]{width:34px;height:28px;padding:2px;cursor:pointer;}
+  .align-group{display:flex;gap:4px;}
+  .align-group button{padding:5px 8px;}
+
+  footer{color:var(--sub);font-size:12px;text-align:center;padding:20px;}
+  .hint{color:var(--sub);font-size:11.5px;margin-top:8px;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;z-index:1000;padding:24px;}
+  .modal-overlay.open{display:flex;}
+  .modal-inner{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);max-width:95vw;max-height:95vh;display:flex;flex-direction:column;overflow:hidden;}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid var(--line);color:var(--sub);font-size:12.5px;}
+  .modal-scroll{overflow:auto;padding:16px;background:repeating-conic-gradient(#2a2b31 0% 25%, #232429 0% 50%) 0/20px 20px;}
+  .modal-scroll img{display:block;width:1080px;height:1080px;max-width:none;max-height:none;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>OVT</h1>
+  <p>One Verse Tool — 1080×1080 말씀 카드 제작</p>
+  <div id="saveIndicator">저장된 내용 없음</div>
+</header>
+
+<main>
+
+  <section class="panel">
+    <h2>성경 구절 불러오기</h2>
+    <div class="row">
+      <input type="file" id="bibleFile" accept="application/json,.json">
+      <span id="bibleStatus" style="color:var(--sub);font-size:12px;">불러온 구절 데이터 없음</span>
+      <button id="bibleClear" class="small danger">저장된 데이터 지우기</button>
+    </div>
+    <div class="row">
+      <select id="bookSelect"><option value="">권 선택</option></select>
+      <select id="chapterSelect" disabled><option value="">장 선택</option></select>
+      <select id="verseSelect" disabled><option value="">절 선택</option></select>
+      <button id="applyVerse" class="small primary" disabled>말씀에 적용</button>
+    </div>
+    <div class="hint">로컬 폴더의 <code>bible.json</code> 파일을 한 번 선택하면 이 브라우저에 저장되어, 다음부터는 다시 첨부하지 않아도 자동으로 불러와져요. 적용을 누르면 [말씀] 레이어에 "[ 권 장:절 ]" 줄바꿈 "본문" 형식으로 채워집니다(묵상글은 그대로 유지).</div>
+  </section>
+
+  <section class="panel">
+    <h2>배경 이미지</h2>
+    <div class="row">
+      <input type="file" id="bgFile" accept="image/*">
+      <label class="small">확대</label>
+      <input type="range" id="zoomRange" min="1" max="3" step="0.01" value="1">
+      <span id="zoomLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
+      <button id="bgReset" class="small">위치 초기화</button>
+      <button id="bgClear" class="small danger">이미지 제거</button>
+    </div>
+    <div class="row">
+      <label class="small">밝기</label>
+      <input type="range" id="brightnessRange" min="50" max="150" step="1" value="100">
+      <span id="brightnessLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
+      <label class="small">대비</label>
+      <input type="range" id="contrastRange" min="50" max="150" step="1" value="100">
+      <span id="contrastLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
+      <label class="small">채도</label>
+      <input type="range" id="saturationRange" min="0" max="200" step="1" value="100">
+      <span id="saturationLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
+      <button id="filterReset" class="small">보정 초기화</button>
+    </div>
+    <div class="hint">캔버스를 드래그하면 배경 이미지를 이동할 수 있어요. 텍스트가 없는 빈 자리를 드래그하면 배경이, 텍스트 위를 드래그하면 그 텍스트 레이어가 움직입니다. 원본 비율은 항상 유지됩니다.</div>
+  </section>
+
+  <div class="editor">
+    <div class="canvas-col">
+      <div class="canvas-wrap"><canvas id="canvas" width="1080" height="1080"></canvas></div>
+      <div class="col-actions">
+        <button class="primary" id="exportBtn">이미지 내보내기</button>
+        <button class="danger" id="resetAll">전체 초기화</button>
+        <button id="actualSizeBtn">실제 사이즈</button>
+      </div>
+    </div>
+    <div class="panels-col" data-layers></div>
+  </div>
+
+  <footer>작업 내용은 이 브라우저에 자동 저장됩니다. 다른 브라우저/기기에서는 이어지지 않아요.</footer>
+</main>
+
+<div class="modal-overlay" id="sizeModal">
+  <div class="modal-inner">
+    <div class="modal-header">
+      <span>실제 사이즈 미리보기 (1080 × 1080px)</span>
+      <button class="small" id="closeSizeModal">닫기</button>
+    </div>
+    <div class="modal-scroll">
+      <img id="sizePreviewImg" width="1080" height="1080" alt="실제 사이즈 미리보기">
+    </div>
+  </div>
+</div>
+
+<script>
+const FONTS = [
+  "Noto Sans KR","Gothic A1","IBM Plex Sans KR","Nanum Gothic","Gowun Dodum",
+  "Noto Serif KR","Nanum Myeongjo","Gowun Batang","Song Myung","Hahmlet",
+  "Black Han Sans","Do Hyeon","Jua","Gugi","Stylish","Sunflower",
+  "Nanum Pen Script","Nanum Brush Script","Gaegu","Gamja Flower","Poor Story",
+  "Cute Font","East Sea Dokdo","Hi Melody","Kirang Haerang","Yeon Sung","Single Day","Dokdo"
+];
+
+const CANVAS_SIZE = 1080;
+const MAX_TEXT_WIDTH = 940;
+const SNAP_PX = 10;
+const FIXED_LAYER_INDEX = 2;
+const FIXED_LAYER_TEXT = '#하루에말씀한절 (@oneverse_a_day)';
+const PLACEHOLDERS = ['출처 (예: 요한복음 3:16)','구절 본문을 입력하세요', null];
+const LAYER_LABELS = ['말씀', '묵상글'];
+
+function defaultLayers(){
+  const shadow = {shadowEnabled:false, shadowColor:'#000000', shadowBlur:12};
+  const stroke = {strokeEnabled:false, strokeColor:'#000000', strokeWidth:4};
+  return [
+    {text:'', visible:true, fontFamily:'Poor Story', fontSize:40, color:'#ffffff', align:'center', bold:true,  italic:false, lineHeight:1.6, x:0.5, y:0.38, maxWidth:600, ...shadow, ...stroke},
+    {text:'', visible:true, fontFamily:'Poor Story', fontSize:40, color:'#ffffff', align:'justify', bold:true, italic:false, lineHeight:1.6, x:0.5, y:0.52, maxWidth:620, ...shadow, ...stroke},
+    {text:FIXED_LAYER_TEXT, visible:true, fontFamily:'Stylish', fontSize:26, color:'#ffffff', align:'center', bold:false, italic:false, lineHeight:1, x:0.5, y:0.93, maxWidth:MAX_TEXT_WIDTH, anchor:'bottom-right', shadowEnabled:true, shadowColor:'#000000', shadowBlur:20, strokeEnabled:false, strokeColor:'#000000', strokeWidth:4}
+  ];
+}
+
+const FIXED_LAYER_LOCK = {text:FIXED_LAYER_TEXT, fontFamily:'Stylish', fontSize:26, color:'#ffffff', align:'center', bold:false, italic:false, lineHeight:1, anchor:'bottom-right', shadowEnabled:true, shadowColor:'#000000', shadowBlur:20, strokeEnabled:false};
+
+function enforceFixedLayerLock(){
+  Object.assign(state.layers[FIXED_LAYER_INDEX], FIXED_LAYER_LOCK);
+}
+
+const state = {
+  bg: { img:null, dataURL:null, natW:0, natH:0, zoom:1, dx:0, dy:0, brightness:100, contrast:100, saturation:100 },
+  layers: defaultLayers(),
+  guide: {x:false, y:false},
+  panels: []
+};
+
+let dragging = null;
+let autosaveTimer = null;
+let dateTextareaEl = null;
+
+// ---------- rendering ----------
+
+function baseScale(){
+  if(!state.bg.img) return 1;
+  return Math.max(CANVAS_SIZE/state.bg.natW, CANVAS_SIZE/state.bg.natH);
+}
+
+function clampBg(){
+  if(!state.bg.img) return;
+  const scale = baseScale()*state.bg.zoom;
+  const drawW = state.bg.natW*scale, drawH = state.bg.natH*scale;
+  state.bg.dx = Math.min(0, Math.max(CANVAS_SIZE-drawW, state.bg.dx));
+  state.bg.dy = Math.min(0, Math.max(CANVAS_SIZE-drawH, state.bg.dy));
+}
+
+function wrapText(ctx, text, maxWidth){
+  if(text === '') return [''];
+  const splitLong = (word)=>{
+    const chunks=[]; let chunk='';
+    for(const ch of word){
+      const t = chunk+ch;
+      if(ctx.measureText(t).width>maxWidth && chunk!==''){ chunks.push(chunk); chunk=ch; }
+      else chunk=t;
+    }
+    if(chunk!=='') chunks.push(chunk);
+    return chunks;
+  };
+  const words = text.split(' ');
+  const lines=[]; let cur='';
+  for(const w of words){
+    const test = cur ? cur+' '+w : w;
+    if(ctx.measureText(test).width<=maxWidth){ cur=test; continue; }
+    if(cur!=='') lines.push(cur);
+    if(ctx.measureText(w).width>maxWidth){
+      const parts = splitLong(w);
+      for(let i=0;i<parts.length-1;i++) lines.push(parts[i]);
+      cur = parts[parts.length-1] || '';
+    } else {
+      cur = w;
+    }
+  }
+  if(cur!=='') lines.push(cur);
+  return lines.length ? lines : [''];
+}
+
+function layerLines(ctx, layer){
+  ctx.font = `${layer.italic?'italic ':''}${layer.bold?'700':'400'} ${layer.fontSize}px "${layer.fontFamily}"`;
+  const paragraphs = layer.text.split('\n');
+  let lines = [];
+  paragraphs.forEach(p => lines.push(...wrapText(ctx, p, layer.maxWidth || MAX_TEXT_WIDTH)));
+  return lines;
+}
+
+function layoutJustifiedLine(ctx, line, startX, targetWidth){
+  const chars = Array.from(line);
+  if(chars.length <= 1) return chars.map(ch => ({ch, x:startX}));
+  const widths = chars.map(ch => ctx.measureText(ch).width);
+  const totalWidth = widths.reduce((a,b)=>a+b, 0);
+  const gap = (targetWidth - totalWidth) / (chars.length - 1);
+  let x = startX;
+  return chars.map((ch,idx)=>{
+    const pos = {ch, x};
+    x += widths[idx] + gap;
+    return pos;
+  });
+}
+
+function drawLayer(ctx, layer){
+  const lines = layerLines(ctx, layer);
+  const lineHeightPx = layer.fontSize * layer.lineHeight;
+  let blockWidth = 0;
+  lines.forEach(l => { blockWidth = Math.max(blockWidth, ctx.measureText(l).width); });
+  blockWidth = Math.max(blockWidth, 60);
+  if(layer.align === 'justify') blockWidth = layer.maxWidth || blockWidth;
+  const blockHeight = Math.max(lines.length*lineHeightPx, lineHeightPx);
+  let centerX = layer.x*CANVAS_SIZE, centerY = layer.y*CANVAS_SIZE;
+  if(layer.anchor === 'bottom-right'){
+    const margin = 36;
+    centerX = CANVAS_SIZE - margin - blockWidth/2;
+    centerY = CANVAS_SIZE - margin - blockHeight/2;
+  }
+  const topY = centerY - blockHeight/2;
+  layer._bbox = {x:centerX-blockWidth/2, y:topY, w:blockWidth, h:blockHeight};
+
+  if(!layer.visible) return;
+  ctx.fillStyle = layer.color;
+  ctx.textBaseline = 'top';
+  ctx.lineJoin = 'round';
+  ctx.miterLimit = 2;
+  lines.forEach((line,i)=>{
+    const w = ctx.measureText(line).width;
+    let lx;
+    if(layer.align==='center') lx = centerX - w/2;
+    else if(layer.align==='right') lx = centerX + blockWidth/2 - w;
+    else lx = centerX - blockWidth/2;
+    const ly = topY + i*lineHeightPx;
+
+    const positions = (layer.align==='justify' && line.length>0)
+      ? layoutJustifiedLine(ctx, line, lx, blockWidth)
+      : null;
+
+    if(layer.strokeEnabled && layer.strokeWidth>0){
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.lineWidth = layer.strokeWidth;
+      ctx.strokeStyle = layer.strokeColor;
+      if(positions) positions.forEach(p => ctx.strokeText(p.ch, p.x, ly));
+      else ctx.strokeText(line, lx, ly);
+    }
+
+    if(layer.shadowEnabled){
+      ctx.shadowColor = layer.shadowColor;
+      ctx.shadowBlur = layer.shadowBlur;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+    } else {
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+    }
+    if(positions) positions.forEach(p => ctx.fillText(p.ch, p.x, ly));
+    else ctx.fillText(line, lx, ly);
+  });
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+}
+
+function clamp255(v){ return v<0 ? 0 : (v>255 ? 255 : v); }
+
+// iOS Safari has unreliable/absent support for CanvasRenderingContext2D.filter
+// with drawImage, so brightness/contrast/saturation are applied manually on
+// pixel data instead of relying on ctx.filter — this works identically on
+// every platform.
+function applyImageAdjustments(ctx, brightness, contrast, saturation){
+  if(brightness===100 && contrast===100 && saturation===100) return;
+  const bF = brightness/100, cF = contrast/100, sF = saturation/100;
+  const imgData = ctx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  const d = imgData.data;
+  for(let i=0;i<d.length;i+=4){
+    let r=d[i]*bF, g=d[i+1]*bF, b=d[i+2]*bF;
+    r=(r-128)*cF+128; g=(g-128)*cF+128; b=(b-128)*cF+128;
+    const gray = 0.213*r + 0.715*g + 0.072*b;
+    r = gray + (r-gray)*sF;
+    g = gray + (g-gray)*sF;
+    b = gray + (b-gray)*sF;
+    d[i]=clamp255(r); d[i+1]=clamp255(g); d[i+2]=clamp255(b);
+  }
+  ctx.putImageData(imgData, 0, 0);
+}
+
+function render(){
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+
+  if(state.bg.img){
+    const scale = baseScale()*state.bg.zoom;
+    const drawW = state.bg.natW*scale, drawH = state.bg.natH*scale;
+    ctx.drawImage(state.bg.img, state.bg.dx, state.bg.dy, drawW, drawH);
+    applyImageAdjustments(ctx, state.bg.brightness, state.bg.contrast, state.bg.saturation);
+  } else {
+    ctx.fillStyle = '#2c2d33';
+    ctx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
+    ctx.fillStyle = '#7c8190';
+    ctx.font = '32px "Noto Sans KR"';
+    ctx.textAlign = 'center'; ctx.textBaseline='middle';
+    ctx.fillText('배경 이미지를 업로드하세요', CANVAS_SIZE/2, CANVAS_SIZE/2);
+    ctx.textAlign = 'left';
+  }
+
+  state.layers.forEach(layer => drawLayer(ctx, layer));
+
+  if(state.guide.x || state.guide.y){
+    ctx.save();
+    ctx.strokeStyle = '#ff5b7a';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10,8]);
+    if(state.guide.x){ ctx.beginPath(); ctx.moveTo(CANVAS_SIZE/2,0); ctx.lineTo(CANVAS_SIZE/2,CANVAS_SIZE); ctx.stroke(); }
+    if(state.guide.y){ ctx.beginPath(); ctx.moveTo(0,CANVAS_SIZE/2); ctx.lineTo(CANVAS_SIZE,CANVAS_SIZE/2); ctx.stroke(); }
+    ctx.restore();
+  }
+}
+
+// ---------- pointer interaction ----------
+
+function canvasPoint(canvas, evt){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = CANVAS_SIZE/rect.width, scaleY = CANVAS_SIZE/rect.height;
+  return { x:(evt.clientX-rect.left)*scaleX, y:(evt.clientY-rect.top)*scaleY };
+}
+
+function hitLayer(pt){
+  const layers = state.layers;
+  for(let i=layers.length-1;i>=0;i--){
+    if(i === FIXED_LAYER_INDEX) continue;
+    const b = layers[i]._bbox;
+    if(!b) continue;
+    const pad = 10;
+    if(pt.x>=b.x-pad && pt.x<=b.x+b.w+pad && pt.y>=b.y-pad && pt.y<=b.y+b.h+pad) return i;
+  }
+  return -1;
+}
+
+function setupCanvasDrag(){
+  const canvas = document.getElementById('canvas');
+  canvas.addEventListener('pointerdown', e=>{
+    const pt = canvasPoint(canvas, e);
+    const layerIndex = hitLayer(pt);
+    if(layerIndex>=0){
+      const layer = state.layers[layerIndex];
+      dragging = { type:'layer', layerIndex, start:pt, startX:layer.x, startY:layer.y };
+    } else if(state.bg.img){
+      dragging = { type:'bg', start:pt, startDx:state.bg.dx, startDy:state.bg.dy };
+    } else {
+      return;
+    }
+    canvas.setPointerCapture(e.pointerId);
+    canvas.classList.add('dragging');
+  });
+
+  canvas.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    const pt = canvasPoint(canvas, e);
+    const delta = { x:pt.x-dragging.start.x, y:pt.y-dragging.start.y };
+
+    if(dragging.type==='layer'){
+      const layer = state.layers[dragging.layerIndex];
+      let nx = dragging.startX + delta.x/CANVAS_SIZE;
+      let ny = dragging.startY + delta.y/CANVAS_SIZE;
+      nx = Math.min(1, Math.max(0, nx));
+      ny = Math.min(1, Math.max(0, ny));
+      const cx = nx*CANVAS_SIZE, cy = ny*CANVAS_SIZE;
+      const snapX = Math.abs(cx-CANVAS_SIZE/2) < SNAP_PX;
+      const snapY = Math.abs(cy-CANVAS_SIZE/2) < SNAP_PX;
+      if(snapX) nx = 0.5;
+      if(snapY) ny = 0.5;
+      layer.x = nx; layer.y = ny;
+      state.guide = {x:snapX, y:snapY};
+      render();
+    } else if(dragging.type==='bg'){
+      state.bg.dx = dragging.startDx + delta.x;
+      state.bg.dy = dragging.startDy + delta.y;
+      clampBg();
+      render();
+    }
+  });
+
+  const end = ()=>{
+    if(!dragging) return;
+    state.guide = {x:false,y:false};
+    render();
+    dragging = null;
+    canvas.classList.remove('dragging');
+    scheduleAutosave();
+  };
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+}
+
+// ---------- layer panels ----------
+
+function buildFixedLayerPanel(index){
+  const layer = state.layers[index];
+  const wrap = document.createElement('div');
+  wrap.className = 'layer-card';
+  wrap.innerHTML = `
+    <div class="head">
+      <strong>타이틀 · 고정</strong>
+      <button class="small" data-act="view">보임</button>
+    </div>
+    <div class="fixed-note">문구, 폰트, 크기, 색상, 위치, 그림자가 모두 고정되어 있어요. 보임/숨김만 바꿀 수 있습니다.<br>&quot;${FIXED_LAYER_TEXT}&quot;</div>
+  `;
+  const viewBtn = wrap.querySelector('[data-act=view]');
+  function refreshUI(){
+    viewBtn.textContent = layer.visible ? '보임' : '숨김';
+    viewBtn.classList.toggle('toggle-on', layer.visible);
+  }
+  viewBtn.addEventListener('click', ()=>{ layer.visible = !layer.visible; refreshUI(); render(); scheduleAutosave(); });
+  refreshUI();
+  wrap._refresh = refreshUI;
+  return wrap;
+}
+
+function buildLayerPanel(index){
+  if(index === FIXED_LAYER_INDEX) return buildFixedLayerPanel(index);
+  const layer = state.layers[index];
+  const wrap = document.createElement('div');
+  wrap.className = 'layer-card';
+  wrap.innerHTML = `
+    <div class="head">
+      <strong>${LAYER_LABELS[index] || ('레이어 '+(index+1))}</strong>
+      <div style="display:flex;gap:6px;">
+        ${index===1 ? '<a class="small btn" href="https://nara-speller.co.kr/speller/" target="_blank" rel="noopener noreferrer" data-act="spellcheck">맞춤법 검사</a>' : ''}
+        <button class="small" data-act="center">가운데로</button>
+        <button class="small" data-act="view">보임</button>
+      </div>
+    </div>
+    <textarea rows="${index===0 ? 6 : 10}" spellcheck="true" placeholder="${PLACEHOLDERS[index] || ''}"></textarea>
+    <div class="row" style="margin-top:8px;">
+      <select data-field="fontFamily"></select>
+      <label class="small">크기</label>
+      <input type="number" data-field="fontSize" min="8" max="240">
+      <label class="small">색상</label>
+      <input type="color" data-field="color">
+    </div>
+    <div class="row">
+      <div class="align-group" data-field="align">
+        <button data-val="left">좌</button>
+        <button data-val="center">중</button>
+        <button data-val="right">우</button>
+        <button data-val="justify">양쪽</button>
+      </div>
+      <button class="small" data-field="bold">B</button>
+      <button class="small" data-field="italic"><i>I</i></button>
+      <label class="small">줄간격</label>
+      <input type="number" data-field="lineHeight" min="0.8" max="3" step="0.1">
+    </div>
+    <div class="row">
+      <label class="small">너비</label>
+      <input type="number" data-field="maxWidth" min="200" max="1080" step="10">
+    </div>
+    <div class="row">
+      <button class="small" data-field="shadowEnabled">그림자</button>
+      <input type="color" data-field="shadowColor">
+      <label class="small">두께</label>
+      <input type="number" data-field="shadowBlur" min="0" max="60">
+    </div>
+    <div class="row">
+      <button class="small" data-field="strokeEnabled">외곽선</button>
+      <input type="color" data-field="strokeColor">
+      <label class="small">두께</label>
+      <input type="number" data-field="strokeWidth" min="0" max="40">
+    </div>
+  `;
+
+  const textarea = wrap.querySelector('textarea');
+  const fontSelect = wrap.querySelector('[data-field=fontFamily]');
+  const fontSize = wrap.querySelector('[data-field=fontSize]');
+  const color = wrap.querySelector('[data-field=color]');
+  const lineHeight = wrap.querySelector('[data-field=lineHeight]');
+  const boldBtn = wrap.querySelector('[data-field=bold]');
+  const italicBtn = wrap.querySelector('[data-field=italic]');
+  const alignBtns = [...wrap.querySelectorAll('[data-field=align] button')];
+  const viewBtn = wrap.querySelector('[data-act=view]');
+  const centerBtn = wrap.querySelector('[data-act=center]');
+  const shadowBtn = wrap.querySelector('[data-field=shadowEnabled]');
+  const shadowColor = wrap.querySelector('[data-field=shadowColor]');
+  const shadowBlur = wrap.querySelector('[data-field=shadowBlur]');
+  const strokeBtn = wrap.querySelector('[data-field=strokeEnabled]');
+  const strokeColor = wrap.querySelector('[data-field=strokeColor]');
+  const strokeWidth = wrap.querySelector('[data-field=strokeWidth]');
+  const maxWidth = wrap.querySelector('[data-field=maxWidth]');
+
+  FONTS.forEach(f=>{
+    const opt = document.createElement('option');
+    opt.value = f; opt.textContent = f;
+    opt.style.fontFamily = `"${f}"`;
+    fontSelect.appendChild(opt);
+  });
+
+  function refreshUI(){
+    if(textarea) textarea.value = layer.text;
+    fontSelect.value = layer.fontFamily;
+    fontSize.value = layer.fontSize;
+    color.value = layer.color;
+    lineHeight.value = layer.lineHeight;
+    boldBtn.classList.toggle('toggle-on', layer.bold);
+    italicBtn.classList.toggle('toggle-on', layer.italic);
+    alignBtns.forEach(b=>b.classList.toggle('toggle-on', b.dataset.val===layer.align));
+    viewBtn.textContent = layer.visible ? '보임' : '숨김';
+    viewBtn.classList.toggle('toggle-on', layer.visible);
+
+    shadowBtn.classList.toggle('toggle-on', layer.shadowEnabled);
+    shadowColor.value = layer.shadowColor;
+    shadowBlur.value = layer.shadowBlur;
+    shadowColor.disabled = !layer.shadowEnabled;
+    shadowBlur.disabled = !layer.shadowEnabled;
+
+    strokeBtn.classList.toggle('toggle-on', layer.strokeEnabled);
+    strokeColor.value = layer.strokeColor;
+    strokeWidth.value = layer.strokeWidth;
+    strokeColor.disabled = !layer.strokeEnabled;
+    strokeWidth.disabled = !layer.strokeEnabled;
+
+    maxWidth.value = layer.maxWidth;
+  }
+
+  const commit = ()=>{ render(); scheduleAutosave(); };
+
+  if(textarea) textarea.addEventListener('input', ()=>{ layer.text = textarea.value; commit(); });
+  fontSelect.addEventListener('change', ()=>{ layer.fontFamily = fontSelect.value; commit(); });
+  fontSize.addEventListener('input', ()=>{ layer.fontSize = Number(fontSize.value)||layer.fontSize; commit(); });
+  color.addEventListener('input', ()=>{ layer.color = color.value; commit(); });
+  lineHeight.addEventListener('input', ()=>{ layer.lineHeight = Number(lineHeight.value)||1.3; commit(); });
+  boldBtn.addEventListener('click', ()=>{ layer.bold = !layer.bold; refreshUI(); commit(); });
+  italicBtn.addEventListener('click', ()=>{ layer.italic = !layer.italic; refreshUI(); commit(); });
+  alignBtns.forEach(b=> b.addEventListener('click', ()=>{ layer.align = b.dataset.val; refreshUI(); commit(); }));
+  viewBtn.addEventListener('click', ()=>{ layer.visible = !layer.visible; refreshUI(); commit(); });
+  centerBtn.addEventListener('click', ()=>{ layer.x = 0.5; layer.y = 0.5; commit(); });
+
+  if(index === 1){
+    const spellBtn = wrap.querySelector('[data-act=spellcheck]');
+    // A real <a target="_blank"> click is used instead of window.open() —
+    // the Artifact viewer's sandbox blocks script-initiated popups, but a
+    // genuine anchor click still opens a new tab. Copying happens alongside,
+    // without blocking the link's own navigation.
+    spellBtn.addEventListener('click', ()=>{
+      copyTextToClipboard(textarea.value);
+      const original = spellBtn.textContent;
+      spellBtn.textContent = '복사됨';
+      setTimeout(()=>{ spellBtn.textContent = original; }, 1500);
+    });
+  }
+
+  shadowBtn.addEventListener('click', ()=>{ layer.shadowEnabled = !layer.shadowEnabled; refreshUI(); commit(); });
+  shadowColor.addEventListener('input', ()=>{ layer.shadowColor = shadowColor.value; commit(); });
+  shadowBlur.addEventListener('input', ()=>{ layer.shadowBlur = Number(shadowBlur.value)||0; commit(); });
+  strokeBtn.addEventListener('click', ()=>{ layer.strokeEnabled = !layer.strokeEnabled; refreshUI(); commit(); });
+  strokeColor.addEventListener('input', ()=>{ layer.strokeColor = strokeColor.value; commit(); });
+  strokeWidth.addEventListener('input', ()=>{ layer.strokeWidth = Number(strokeWidth.value)||0; commit(); });
+  maxWidth.addEventListener('input', ()=>{ layer.maxWidth = Number(maxWidth.value)||layer.maxWidth; commit(); });
+
+  refreshUI();
+  wrap._refresh = refreshUI;
+  return wrap;
+}
+
+function bindCopyButton(copyBtn, textarea){
+  copyBtn.addEventListener('click', async ()=>{
+    let copied = false;
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      try{ await navigator.clipboard.writeText(textarea.value); copied = true; }catch(e){}
+    }
+    if(!copied){
+      try{
+        textarea.select();
+        document.execCommand('copy');
+        copied = true;
+      }catch(e){}
+    }
+    copyBtn.textContent = copied ? '복사됨' : '복사 실패';
+    setTimeout(()=>{ copyBtn.textContent = '복사'; }, 1200);
+  });
+}
+
+function buildCopyTextPanel(label, storageKey, defaultText){
+  const wrap = document.createElement('div');
+  wrap.className = 'layer-card';
+  wrap.innerHTML = `
+    <div class="head">
+      <strong>${label}</strong>
+      <button class="small" data-act="copy">복사</button>
+    </div>
+    <textarea placeholder="이미지에는 표시되지 않아요. 인스타그램에 붙여넣을 텍스트를 적어두고 복사해서 쓰세요."></textarea>
+  `;
+  const textarea = wrap.querySelector('textarea');
+  const copyBtn = wrap.querySelector('[data-act=copy]');
+
+  let saved = null;
+  try{ saved = localStorage.getItem(storageKey); }catch(e){}
+  textarea.value = saved !== null ? saved : (defaultText || '');
+
+  textarea.addEventListener('input', ()=>{
+    try{ localStorage.setItem(storageKey, textarea.value); }catch(e){}
+  });
+
+  bindCopyButton(copyBtn, textarea);
+  wrap._textarea = textarea;
+  return wrap;
+}
+
+function buildDateTextPanel(){
+  const WEEKDAYS_KO = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
+  const storageKey = 'ovt_copytext_date';
+  const dayKey = 'ovt_copytext_date_day';
+
+  function todayText(){
+    const d = new Date();
+    return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${WEEKDAYS_KO[d.getDay()]}\n📖하루에 말씀 한 절📖`;
+  }
+
+  const wrap = document.createElement('div');
+  wrap.className = 'layer-card';
+  wrap.innerHTML = `
+    <div class="head">
+      <strong>날짜</strong>
+      <div style="display:flex;gap:6px;">
+        <button class="small" data-act="today">오늘 날짜</button>
+        <button class="small" data-act="copy">복사</button>
+      </div>
+    </div>
+    <textarea placeholder="이미지에는 표시되지 않아요."></textarea>
+  `;
+  const textarea = wrap.querySelector('textarea');
+  const copyBtn = wrap.querySelector('[data-act=copy]');
+  const todayBtn = wrap.querySelector('[data-act=today]');
+
+  const todayKey = new Date().toDateString();
+  let initial = todayText();
+  try{
+    if(localStorage.getItem(dayKey) === todayKey){
+      initial = localStorage.getItem(storageKey) || todayText();
+    }
+  }catch(e){}
+  textarea.value = initial;
+
+  function persist(){
+    try{
+      localStorage.setItem(storageKey, textarea.value);
+      localStorage.setItem(dayKey, todayKey);
+    }catch(e){}
+  }
+  textarea.addEventListener('input', persist);
+  todayBtn.addEventListener('click', ()=>{ textarea.value = todayText(); persist(); });
+  persist();
+
+  bindCopyButton(copyBtn, textarea);
+  wrap._textarea = textarea;
+  return wrap;
+}
+
+async function copyTextToClipboard(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    try{ await navigator.clipboard.writeText(text); return true; }catch(e){}
+  }
+  try{
+    const tmp = document.createElement('textarea');
+    tmp.value = text;
+    tmp.style.position = 'fixed';
+    tmp.style.opacity = '0';
+    document.body.appendChild(tmp);
+    tmp.select();
+    document.execCommand('copy');
+    document.body.removeChild(tmp);
+    return true;
+  }catch(e){ return false; }
+}
+
+function buildCombinedCopyPanel(dateTextarea, hashtagTextarea){
+  const wrap = document.createElement('div');
+  wrap.className = 'layer-card';
+  wrap.innerHTML = `
+    <div class="head"><strong>전체 복사</strong></div>
+    <button class="small primary" style="width:100%;" data-act="copyall">텍스트 복사</button>
+    <div class="hint">날짜 - 말씀(출처) - 묵상글(본문) - 해시태그 순서로 합쳐서 클립보드에 복사합니다.</div>
+  `;
+  const btn = wrap.querySelector('[data-act=copyall]');
+  btn.addEventListener('click', async ()=>{
+    const combined = [
+      dateTextarea.value,
+      '-',
+      state.layers[0].text,
+      '-----',
+      state.layers[1].text,
+      '-',
+      hashtagTextarea.value
+    ].join('\n');
+    const copied = await copyTextToClipboard(combined);
+    btn.textContent = copied ? '복사됨' : '복사 실패';
+    setTimeout(()=>{ btn.textContent = '텍스트 복사'; }, 1200);
+  });
+  return wrap;
+}
+
+function buildAllPanels(){
+  const container = document.querySelector('.panels-col');
+  state.layers.forEach((layer, i)=>{
+    const panel = buildLayerPanel(i);
+    container.appendChild(panel);
+    state.panels[i] = panel;
+  });
+  const datePanel = buildDateTextPanel();
+  dateTextareaEl = datePanel._textarea;
+  const hashtagPanel = buildCopyTextPanel('해시태그', 'ovt_copytext_2',
+    '#겸목사말씀묵상 #하루에말씀한절 #oneverseaday #QT #묵상');
+  container.appendChild(datePanel);
+  container.appendChild(hashtagPanel);
+  container.appendChild(buildCombinedCopyPanel(datePanel._textarea, hashtagPanel._textarea));
+}
+
+// ---------- background controls ----------
+
+const BG_MAX_SHORT_SIDE = 1600;
+
+// Downscales the loaded image so its shorter side is at most BG_MAX_SHORT_SIDE,
+// re-encoded as JPEG — keeps the in-memory bitmap and the autosaved dataURL
+// (localStorage) small. drawW/drawH stay identical after resizing because
+// baseScale() is defined relative to natW/natH, so pan/zoom framing is
+// unaffected; only source sharpness at high zoom is traded for file size.
+function resizeIfNeeded(img, originalDataURL, callback){
+  const shortSide = Math.min(img.naturalWidth, img.naturalHeight);
+  if(shortSide <= BG_MAX_SHORT_SIDE){
+    callback(img, originalDataURL, img.naturalWidth, img.naturalHeight);
+    return;
+  }
+  const scale = BG_MAX_SHORT_SIDE / shortSide;
+  const newW = Math.round(img.naturalWidth * scale), newH = Math.round(img.naturalHeight * scale);
+  const off = document.createElement('canvas');
+  off.width = newW; off.height = newH;
+  off.getContext('2d').drawImage(img, 0, 0, newW, newH);
+  const resizedDataURL = off.toDataURL('image/jpeg', 0.88);
+  const resizedImg = new Image();
+  resizedImg.onload = ()=> callback(resizedImg, resizedDataURL, newW, newH);
+  resizedImg.src = resizedDataURL;
+}
+
+document.getElementById('bgFile').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    const img = new Image();
+    img.onload = ()=>{
+      resizeIfNeeded(img, ev.target.result, (finalImg, finalDataURL, w, h)=>{
+        state.bg.img = finalImg;
+        state.bg.dataURL = finalDataURL;
+        state.bg.natW = w;
+        state.bg.natH = h;
+        state.bg.zoom = 1;
+        const scale = baseScale();
+        state.bg.dx = (CANVAS_SIZE - w*scale)/2;
+        state.bg.dy = (CANVAS_SIZE - h*scale)/2;
+        document.getElementById('zoomRange').value = 1;
+        document.getElementById('zoomLabel').textContent = '100%';
+        render();
+        scheduleAutosave();
+      });
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.getElementById('zoomRange').addEventListener('input', e=>{
+  if(!state.bg.img) return;
+  const oldScale = baseScale()*state.bg.zoom;
+  const oldDrawW = state.bg.natW*oldScale, oldDrawH = state.bg.natH*oldScale;
+  const fracX = (CANVAS_SIZE/2 - state.bg.dx)/oldDrawW;
+  const fracY = (CANVAS_SIZE/2 - state.bg.dy)/oldDrawH;
+
+  state.bg.zoom = Number(e.target.value);
+  document.getElementById('zoomLabel').textContent = Math.round(state.bg.zoom*100)+'%';
+
+  const newScale = baseScale()*state.bg.zoom;
+  const newDrawW = state.bg.natW*newScale, newDrawH = state.bg.natH*newScale;
+  state.bg.dx = CANVAS_SIZE/2 - fracX*newDrawW;
+  state.bg.dy = CANVAS_SIZE/2 - fracY*newDrawH;
+  clampBg();
+  render();
+  scheduleAutosave();
+});
+
+document.getElementById('bgReset').addEventListener('click', ()=>{
+  if(!state.bg.img) return;
+  state.bg.zoom = 1;
+  const scale = baseScale();
+  state.bg.dx = (CANVAS_SIZE - state.bg.natW*scale)/2;
+  state.bg.dy = (CANVAS_SIZE - state.bg.natH*scale)/2;
+  document.getElementById('zoomRange').value = 1;
+  document.getElementById('zoomLabel').textContent = '100%';
+  render();
+  scheduleAutosave();
+});
+
+function bindFilterRange(rangeId, labelId, field){
+  document.getElementById(rangeId).addEventListener('input', e=>{
+    state.bg[field] = Number(e.target.value);
+    document.getElementById(labelId).textContent = state.bg[field]+'%';
+    render();
+    scheduleAutosave();
+  });
+}
+bindFilterRange('brightnessRange', 'brightnessLabel', 'brightness');
+bindFilterRange('contrastRange', 'contrastLabel', 'contrast');
+bindFilterRange('saturationRange', 'saturationLabel', 'saturation');
+
+function syncFilterInputs(){
+  document.getElementById('brightnessRange').value = state.bg.brightness;
+  document.getElementById('brightnessLabel').textContent = state.bg.brightness+'%';
+  document.getElementById('contrastRange').value = state.bg.contrast;
+  document.getElementById('contrastLabel').textContent = state.bg.contrast+'%';
+  document.getElementById('saturationRange').value = state.bg.saturation;
+  document.getElementById('saturationLabel').textContent = state.bg.saturation+'%';
+}
+
+document.getElementById('filterReset').addEventListener('click', ()=>{
+  state.bg.brightness = 100; state.bg.contrast = 100; state.bg.saturation = 100;
+  syncFilterInputs();
+  render();
+  scheduleAutosave();
+});
+
+document.getElementById('bgClear').addEventListener('click', ()=>{
+  state.bg = { img:null, dataURL:null, natW:0, natH:0, zoom:1, dx:0, dy:0, brightness:100, contrast:100, saturation:100 };
+  document.getElementById('bgFile').value = '';
+  document.getElementById('zoomRange').value = 1;
+  document.getElementById('zoomLabel').textContent = '100%';
+  syncFilterInputs();
+  render();
+  scheduleAutosave();
+});
+
+// ---------- bible verse loader ----------
+
+const bibleState = { data: null };
+
+function resetSelect(id, placeholder, disabled){
+  const sel = document.getElementById(id);
+  sel.innerHTML = `<option value="">${placeholder}</option>`;
+  sel.disabled = disabled;
+}
+
+// bible.json (several MB) is too big for localStorage, so it's cached in
+// IndexedDB after the first manual pick — later visits restore it
+// automatically without asking the user to attach the file again.
+const IDB_NAME = 'ovt-db', IDB_STORE = 'kv';
+
+function idbOpen(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = ()=>{ req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function idbSet(key, value){
+  try{
+    const db = await idbOpen();
+    return await new Promise((resolve, reject)=>{
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(value, key);
+      tx.oncomplete = ()=> resolve(true);
+      tx.onerror = ()=> reject(tx.error);
+    });
+  }catch(e){ return false; }
+}
+async function idbGet(key){
+  try{
+    const db = await idbOpen();
+    return await new Promise((resolve, reject)=>{
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = ()=> resolve(req.result);
+      req.onerror = ()=> reject(req.error);
+    });
+  }catch(e){ return undefined; }
+}
+async function idbDelete(key){
+  try{
+    const db = await idbOpen();
+    return await new Promise(resolve=>{
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(key);
+      tx.oncomplete = ()=> resolve(true);
+      tx.onerror = ()=> resolve(false);
+    });
+  }catch(e){ return false; }
+}
+
+function applyBibleData(json, statusText){
+  bibleState.data = json;
+  document.getElementById('bibleStatus').textContent = statusText;
+  const sel = document.getElementById('bookSelect');
+  sel.innerHTML = '<option value="">권 선택</option>';
+  json.books.forEach((book, i)=>{
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = book.name;
+    sel.appendChild(opt);
+  });
+  sel.disabled = false;
+  resetSelect('chapterSelect', '장 선택', true);
+  resetSelect('verseSelect', '절 선택', true);
+  document.getElementById('applyVerse').disabled = true;
+}
+
+document.getElementById('bibleFile').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    try{
+      const json = JSON.parse(ev.target.result);
+      if(!Array.isArray(json.books)) throw new Error('missing books array');
+      applyBibleData(json, `불러옴: ${file.name} (${json.books.length}권)`);
+      idbSet('bibleData', json);
+    }catch(err){
+      bibleState.data = null;
+      document.getElementById('bibleStatus').textContent = 'JSON 파싱 실패: bible.json 형식을 확인해주세요.';
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('bibleClear').addEventListener('click', async ()=>{
+  await idbDelete('bibleData');
+  bibleState.data = null;
+  document.getElementById('bibleFile').value = '';
+  document.getElementById('bibleStatus').textContent = '불러온 구절 데이터 없음';
+  resetSelect('bookSelect', '권 선택', false);
+  resetSelect('chapterSelect', '장 선택', true);
+  resetSelect('verseSelect', '절 선택', true);
+  document.getElementById('applyVerse').disabled = true;
+});
+
+(async ()=>{
+  const cached = await idbGet('bibleData');
+  if(cached && Array.isArray(cached.books)){
+    applyBibleData(cached, `저장된 데이터 사용 중 (${cached.books.length}권)`);
+  }
+})();
+
+document.getElementById('bookSelect').addEventListener('change', e=>{
+  const bookIdx = e.target.value;
+  resetSelect('chapterSelect', '장 선택', bookIdx==='');
+  resetSelect('verseSelect', '절 선택', true);
+  document.getElementById('applyVerse').disabled = true;
+  if(bookIdx==='' || !bibleState.data) return;
+  const book = bibleState.data.books[Number(bookIdx)];
+  const chapters = [...new Set(book.verses.map(v=>v.chapter))].sort((a,b)=>a-b);
+  const chSel = document.getElementById('chapterSelect');
+  chapters.forEach(ch=>{
+    const opt = document.createElement('option');
+    opt.value = ch; opt.textContent = ch+'장';
+    chSel.appendChild(opt);
+  });
+  chSel.disabled = false;
+});
+
+document.getElementById('chapterSelect').addEventListener('change', e=>{
+  const bookIdx = document.getElementById('bookSelect').value;
+  const ch = e.target.value;
+  resetSelect('verseSelect', '절 선택', !ch);
+  document.getElementById('applyVerse').disabled = true;
+  if(!ch || bookIdx==='' || !bibleState.data) return;
+  const book = bibleState.data.books[Number(bookIdx)];
+  const verses = book.verses.filter(v => String(v.chapter) === String(ch));
+  const vSel = document.getElementById('verseSelect');
+  verses.forEach(v=>{
+    const opt = document.createElement('option');
+    opt.value = v.verse; opt.textContent = v.verse+'절';
+    vSel.appendChild(opt);
+  });
+  vSel.disabled = false;
+});
+
+document.getElementById('verseSelect').addEventListener('change', e=>{
+  document.getElementById('applyVerse').disabled = !e.target.value;
+});
+
+document.getElementById('applyVerse').addEventListener('click', ()=>{
+  if(!bibleState.data) return;
+  const bookIdx = document.getElementById('bookSelect').value;
+  const ch = document.getElementById('chapterSelect').value;
+  const v = document.getElementById('verseSelect').value;
+  if(bookIdx==='' || !ch || !v) return;
+  const book = bibleState.data.books[Number(bookIdx)];
+  const verseObj = book.verses.find(x => String(x.chapter)===String(ch) && String(x.verse)===String(v));
+  if(!verseObj) return;
+  state.layers[0].text = `[ ${book.name} ${ch}:${v} ]\n${verseObj.text}`;
+  if(state.panels[0] && state.panels[0]._refresh) state.panels[0]._refresh();
+  render();
+  scheduleAutosave();
+});
+
+// ---------- export ----------
+
+function pad(n){ return String(n).padStart(2,'0'); }
+
+async function saveBlob(filename, blob){
+  if(window.claude && typeof window.claude.use === 'function'){
+    try{
+      const downloads = await window.claude.use('downloads');
+      if(downloads){
+        await downloads.save({filename, data: blob});
+        return;
+      }
+    }catch(e){
+      // not running inside an Artifact viewer, or the viewer declined/lacks the
+      // capability — fall through to a normal browser download below.
+    }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+}
+
+function canvasToBlob(canvas){
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 1.0));
+}
+
+function dateFilenameBase(){
+  if(dateTextareaEl){
+    const firstLine = (dateTextareaEl.value.split('\n')[0] || '').trim();
+    const m = firstLine.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);
+    if(m) return m[1].slice(2) + pad(Number(m[2])) + pad(Number(m[3]));
+  }
+  const d = new Date();
+  return String(d.getFullYear()).slice(2) + pad(d.getMonth()+1) + pad(d.getDate());
+}
+
+async function exportImage(){
+  const canvas = document.getElementById('canvas');
+  const savedGuide = state.guide;
+  const savedVisible0 = state.layers[0].visible;
+  const savedVisible1 = state.layers[1].visible;
+  const base = dateFilenameBase();
+  state.guide = {x:false,y:false};
+
+  try{
+    state.layers[0].visible = true;
+    state.layers[1].visible = false;
+    render();
+    const blob1 = await canvasToBlob(canvas);
+    await saveBlob(`${base}-1.jpg`, blob1);
+
+    state.layers[0].visible = false;
+    state.layers[1].visible = true;
+    render();
+    const blob2 = await canvasToBlob(canvas);
+    await saveBlob(`${base}-2.jpg`, blob2);
+  } finally {
+    state.layers[0].visible = savedVisible0;
+    state.layers[1].visible = savedVisible1;
+    state.guide = savedGuide;
+    render();
+  }
+}
+
+document.getElementById('exportBtn').addEventListener('click', exportImage);
+
+// ---------- reset ----------
+// window.confirm() is blocked (silently returns false) inside the sandboxed
+// Artifact viewer, which made this button appear to do nothing there. Use a
+// two-click in-page confirmation instead — works identically everywhere.
+
+(function setupResetAll(){
+  const btn = document.getElementById('resetAll');
+  const originalLabel = btn.textContent;
+  let confirming = false;
+  let confirmTimer = null;
+
+  btn.addEventListener('click', ()=>{
+    if(!confirming){
+      confirming = true;
+      btn.textContent = '정말 초기화? (다시 클릭)';
+      confirmTimer = setTimeout(()=>{
+        confirming = false;
+        btn.textContent = originalLabel;
+      }, 3000);
+      return;
+    }
+    clearTimeout(confirmTimer);
+    try{ localStorage.removeItem('ovt_state_v2'); }catch(e){}
+    location.reload();
+  });
+})();
+
+// ---------- actual size preview ----------
+
+const sizeModal = document.getElementById('sizeModal');
+
+function openSizeModal(){
+  const canvas = document.getElementById('canvas');
+  const savedGuide = state.guide;
+  state.guide = {x:false,y:false};
+  render();
+  document.getElementById('sizePreviewImg').src = canvas.toDataURL('image/png');
+  state.guide = savedGuide;
+  render();
+  sizeModal.classList.add('open');
+}
+function closeSizeModal(){
+  sizeModal.classList.remove('open');
+}
+document.getElementById('actualSizeBtn').addEventListener('click', openSizeModal);
+document.getElementById('closeSizeModal').addEventListener('click', closeSizeModal);
+sizeModal.addEventListener('click', e=>{ if(e.target === sizeModal) closeSizeModal(); });
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && sizeModal.classList.contains('open')) closeSizeModal(); });
+
+// ---------- autosave ----------
+
+function stripLayer(l){
+  return {text:l.text, visible:l.visible, fontFamily:l.fontFamily, fontSize:l.fontSize, color:l.color, align:l.align, bold:l.bold, italic:l.italic, lineHeight:l.lineHeight, x:l.x, y:l.y, maxWidth:l.maxWidth,
+    shadowEnabled:l.shadowEnabled, shadowColor:l.shadowColor, shadowBlur:l.shadowBlur,
+    strokeEnabled:l.strokeEnabled, strokeColor:l.strokeColor, strokeWidth:l.strokeWidth};
+}
+
+function saveState(){
+  const data = {
+    bg: { dataURL: state.bg.dataURL, zoom: state.bg.zoom, dx: state.bg.dx, dy: state.bg.dy, brightness: state.bg.brightness, contrast: state.bg.contrast, saturation: state.bg.saturation },
+    layers: state.layers.map(stripLayer)
+  };
+  try{
+    localStorage.setItem('ovt_state_v2', JSON.stringify(data));
+    const now = new Date();
+    document.getElementById('saveIndicator').textContent = `자동 저장됨 ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  }catch(e){
+    document.getElementById('saveIndicator').textContent = '자동 저장 실패 (저장 공간 부족)';
+  }
+}
+
+function scheduleAutosave(){
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(saveState, 500);
+}
+
+function loadState(){
+  const raw = localStorage.getItem('ovt_state_v2');
+  if(!raw) return;
+  let data;
+  try{ data = JSON.parse(raw); } catch(e){ return; }
+
+  if(Array.isArray(data.layers)){
+    data.layers.forEach((saved, i)=>{
+      if(!state.layers[i]) return;
+      Object.assign(state.layers[i], saved);
+      // layers saved before the justify/width feature existed have no maxWidth;
+      // one-time upgrade layer 2 (verse body) to the 620px justified format.
+      if(i === 1 && !('maxWidth' in saved)){
+        state.layers[i].align = 'justify';
+        state.layers[i].maxWidth = 620;
+      }
+    });
+  }
+  enforceFixedLayerLock();
+  state.panels.forEach(p => { if(p && p._refresh) p._refresh(); });
+
+  if(data.bg && data.bg.dataURL){
+    const img = new Image();
+    img.onload = ()=>{
+      resizeIfNeeded(img, data.bg.dataURL, (finalImg, finalDataURL, w, h)=>{
+        state.bg.img = finalImg;
+        state.bg.dataURL = finalDataURL;
+        state.bg.natW = w;
+        state.bg.natH = h;
+        state.bg.zoom = data.bg.zoom || 1;
+        state.bg.dx = data.bg.dx || 0;
+        state.bg.dy = data.bg.dy || 0;
+        state.bg.brightness = data.bg.brightness || 100;
+        state.bg.contrast = data.bg.contrast || 100;
+        state.bg.saturation = data.bg.saturation != null ? data.bg.saturation : 100;
+        document.getElementById('zoomRange').value = state.bg.zoom;
+        document.getElementById('zoomLabel').textContent = Math.round(state.bg.zoom*100)+'%';
+        syncFilterInputs();
+        render();
+        if(finalDataURL !== data.bg.dataURL) scheduleAutosave();
+      });
+    };
+    img.src = data.bg.dataURL;
+  } else {
+    render();
+  }
+  document.getElementById('saveIndicator').textContent = '이전 작업 내용을 불러왔어요';
+}
+
+// ---------- init ----------
+
+buildAllPanels();
+setupCanvasDrag();
+render();
+if(document.fonts){
+  document.fonts.addEventListener('loadingdone', render);
+  document.fonts.ready.then(render);
+}
+loadState();
+</script>
+</body>
+</html>
