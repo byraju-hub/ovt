@@ -167,9 +167,10 @@ const LAYER_LABELS = ['말씀', '묵상글'];
 function defaultLayers(){
   const shadow = {shadowEnabled:false, shadowColor:'#000000', shadowBlur:12};
   const stroke = {strokeEnabled:false, strokeColor:'#000000', strokeWidth:4};
+  const blend = {multiply:false};
   return [
-    {text:'', visible:true, fontFamily:'Poor Story', fontSize:40, color:'#ffffff', align:'center', bold:true,  italic:false, lineHeight:1.6, x:0.5, y:0.38, maxWidth:600, ...shadow, ...stroke},
-    {text:'', visible:true, fontFamily:'Poor Story', fontSize:40, color:'#ffffff', align:'justify', bold:true, italic:false, lineHeight:1.6, x:0.5, y:0.52, maxWidth:620, ...shadow, ...stroke},
+    {text:'', visible:true, fontFamily:'Poor Story', fontSize:40, color:'#ffffff', align:'center', bold:true,  italic:false, lineHeight:1.6, x:0.5, y:0.38, maxWidth:600, ...shadow, ...stroke, ...blend},
+    {text:'', visible:true, fontFamily:'Poor Story', fontSize:40, color:'#ffffff', align:'justify', bold:true, italic:false, lineHeight:1.6, x:0.5, y:0.52, maxWidth:620, ...shadow, ...stroke, ...blend},
     {text:FIXED_LAYER_TEXT, visible:true, fontFamily:'Stylish', fontSize:26, color:'#ffffff', align:'center', bold:false, italic:false, lineHeight:1, x:0.5, y:0.93, maxWidth:MAX_TEXT_WIDTH, anchor:'bottom-right', shadowEnabled:true, shadowColor:'#000000', shadowBlur:20, strokeEnabled:false, strokeColor:'#000000', strokeWidth:4}
   ];
 }
@@ -236,11 +237,31 @@ function wrapText(ctx, text, maxWidth){
   return lines.length ? lines : [''];
 }
 
+function wrapTextByChar(ctx, text, maxWidth){
+  if(text === '') return [''];
+  const chars = Array.from(text);
+  const lines = []; let cur = '';
+  for(const ch of chars){
+    const test = cur + ch;
+    if(ctx.measureText(test).width > maxWidth && cur !== ''){
+      lines.push(cur);
+      cur = ch;
+    } else {
+      cur = test;
+    }
+  }
+  if(cur !== '') lines.push(cur);
+  return lines.length ? lines : [''];
+}
+
 function layerLines(ctx, layer){
   ctx.font = `${layer.italic?'italic ':''}${layer.bold?'700':'400'} ${layer.fontSize}px "${layer.fontFamily}"`;
   const paragraphs = layer.text.split('\n');
   let lines = [];
-  paragraphs.forEach(p => lines.push(...wrapText(ctx, p, layer.maxWidth || MAX_TEXT_WIDTH)));
+  // justified text wraps per syllable/character instead of per word, so every
+  // line packs as tight as possible before the letter-spacing stretch kicks in.
+  const wrapFn = layer.align === 'justify' ? wrapTextByChar : wrapText;
+  paragraphs.forEach(p => lines.push(...wrapFn(ctx, p, layer.maxWidth || MAX_TEXT_WIDTH)));
   return lines;
 }
 
@@ -297,8 +318,10 @@ function drawLayer(ctx, layer){
       ctx.shadowBlur = 0;
       ctx.lineWidth = layer.strokeWidth;
       ctx.strokeStyle = layer.strokeColor;
+      if(layer.multiply) ctx.globalCompositeOperation = 'multiply';
       if(positions) positions.forEach(p => ctx.strokeText(p.ch, p.x, ly));
       else ctx.strokeText(line, lx, ly);
+      if(layer.multiply) ctx.globalCompositeOperation = 'source-over';
     }
 
     if(layer.shadowEnabled){
@@ -522,6 +545,7 @@ function buildLayerPanel(index){
       <input type="color" data-field="strokeColor">
       <label class="small">두께</label>
       <input type="number" data-field="strokeWidth" min="0" max="40">
+      <button class="small" data-field="multiply">Multiply</button>
     </div>
   `;
 
@@ -541,6 +565,7 @@ function buildLayerPanel(index){
   const strokeBtn = wrap.querySelector('[data-field=strokeEnabled]');
   const strokeColor = wrap.querySelector('[data-field=strokeColor]');
   const strokeWidth = wrap.querySelector('[data-field=strokeWidth]');
+  const multiplyBtn = wrap.querySelector('[data-field=multiply]');
   const maxWidth = wrap.querySelector('[data-field=maxWidth]');
 
   FONTS.forEach(f=>{
@@ -573,6 +598,8 @@ function buildLayerPanel(index){
     strokeWidth.value = layer.strokeWidth;
     strokeColor.disabled = !layer.strokeEnabled;
     strokeWidth.disabled = !layer.strokeEnabled;
+
+    multiplyBtn.classList.toggle('toggle-on', layer.multiply);
 
     maxWidth.value = layer.maxWidth;
   }
@@ -610,6 +637,7 @@ function buildLayerPanel(index){
   strokeBtn.addEventListener('click', ()=>{ layer.strokeEnabled = !layer.strokeEnabled; refreshUI(); commit(); });
   strokeColor.addEventListener('input', ()=>{ layer.strokeColor = strokeColor.value; commit(); });
   strokeWidth.addEventListener('input', ()=>{ layer.strokeWidth = Number(strokeWidth.value)||0; commit(); });
+  multiplyBtn.addEventListener('click', ()=>{ layer.multiply = !layer.multiply; refreshUI(); commit(); });
   maxWidth.addEventListener('input', ()=>{ layer.maxWidth = Number(maxWidth.value)||layer.maxWidth; commit(); });
 
   refreshUI();
@@ -1178,7 +1206,7 @@ document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && sizeModal.cla
 function stripLayer(l){
   return {text:l.text, visible:l.visible, fontFamily:l.fontFamily, fontSize:l.fontSize, color:l.color, align:l.align, bold:l.bold, italic:l.italic, lineHeight:l.lineHeight, x:l.x, y:l.y, maxWidth:l.maxWidth,
     shadowEnabled:l.shadowEnabled, shadowColor:l.shadowColor, shadowBlur:l.shadowBlur,
-    strokeEnabled:l.strokeEnabled, strokeColor:l.strokeColor, strokeWidth:l.strokeWidth};
+    strokeEnabled:l.strokeEnabled, strokeColor:l.strokeColor, strokeWidth:l.strokeWidth, multiply:l.multiply};
 }
 
 function saveState(){
