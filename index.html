@@ -117,6 +117,11 @@
       <span id="saturationLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
       <button id="filterReset" class="small">보정 초기화</button>
     </div>
+    <div class="row">
+      <label class="small">오버레이</label>
+      <input type="range" id="overlayRange" min="0" max="100" step="1" value="0">
+      <span id="overlayLabel" style="width:44px;color:var(--sub);font-size:12px;">0%</span>
+    </div>
     <div class="hint">캔버스를 드래그하면 배경 이미지를 이동할 수 있어요. 텍스트가 없는 빈 자리를 드래그하면 배경이, 텍스트 위를 드래그하면 그 텍스트 레이어가 움직입니다. 원본 비율은 항상 유지됩니다.</div>
   </section>
 
@@ -182,7 +187,7 @@ function enforceFixedLayerLock(){
 }
 
 const state = {
-  bg: { img:null, dataURL:null, natW:0, natH:0, zoom:1, dx:0, dy:0, brightness:100, contrast:100, saturation:100 },
+  bg: { img:null, dataURL:null, natW:0, natH:0, zoom:1, dx:0, dy:0, brightness:100, contrast:100, saturation:100, overlay:0 },
   layers: defaultLayers(),
   guide: {x:false, y:false},
   panels: []
@@ -381,6 +386,11 @@ function render(){
     ctx.textAlign = 'center'; ctx.textBaseline='middle';
     ctx.fillText('배경 이미지를 업로드하세요', CANVAS_SIZE/2, CANVAS_SIZE/2);
     ctx.textAlign = 'left';
+  }
+
+  if(state.bg.overlay > 0){
+    ctx.fillStyle = `rgba(0,0,0,${state.bg.overlay/100})`;
+    ctx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
   }
 
   state.layers.forEach(layer => drawLayer(ctx, layer));
@@ -893,6 +903,7 @@ function bindFilterRange(rangeId, labelId, field){
 bindFilterRange('brightnessRange', 'brightnessLabel', 'brightness');
 bindFilterRange('contrastRange', 'contrastLabel', 'contrast');
 bindFilterRange('saturationRange', 'saturationLabel', 'saturation');
+bindFilterRange('overlayRange', 'overlayLabel', 'overlay');
 
 function syncFilterInputs(){
   document.getElementById('brightnessRange').value = state.bg.brightness;
@@ -901,17 +912,19 @@ function syncFilterInputs(){
   document.getElementById('contrastLabel').textContent = state.bg.contrast+'%';
   document.getElementById('saturationRange').value = state.bg.saturation;
   document.getElementById('saturationLabel').textContent = state.bg.saturation+'%';
+  document.getElementById('overlayRange').value = state.bg.overlay;
+  document.getElementById('overlayLabel').textContent = state.bg.overlay+'%';
 }
 
 document.getElementById('filterReset').addEventListener('click', ()=>{
-  state.bg.brightness = 100; state.bg.contrast = 100; state.bg.saturation = 100;
+  state.bg.brightness = 100; state.bg.contrast = 100; state.bg.saturation = 100; state.bg.overlay = 0;
   syncFilterInputs();
   render();
   scheduleAutosave();
 });
 
 document.getElementById('bgClear').addEventListener('click', ()=>{
-  state.bg = { img:null, dataURL:null, natW:0, natH:0, zoom:1, dx:0, dy:0, brightness:100, contrast:100, saturation:100 };
+  state.bg = { img:null, dataURL:null, natW:0, natH:0, zoom:1, dx:0, dy:0, brightness:100, contrast:100, saturation:100, overlay:0 };
   document.getElementById('bgFile').value = '';
   document.getElementById('zoomRange').value = 1;
   document.getElementById('zoomLabel').textContent = '100%';
@@ -1211,7 +1224,7 @@ function stripLayer(l){
 
 function saveState(){
   const data = {
-    bg: { dataURL: state.bg.dataURL, zoom: state.bg.zoom, dx: state.bg.dx, dy: state.bg.dy, brightness: state.bg.brightness, contrast: state.bg.contrast, saturation: state.bg.saturation },
+    bg: { dataURL: state.bg.dataURL, zoom: state.bg.zoom, dx: state.bg.dx, dy: state.bg.dy, brightness: state.bg.brightness, contrast: state.bg.contrast, saturation: state.bg.saturation, overlay: state.bg.overlay },
     layers: state.layers.map(stripLayer)
   };
   try{
@@ -1263,6 +1276,7 @@ function loadState(){
         state.bg.brightness = data.bg.brightness || 100;
         state.bg.contrast = data.bg.contrast || 100;
         state.bg.saturation = data.bg.saturation != null ? data.bg.saturation : 100;
+        state.bg.overlay = data.bg.overlay != null ? data.bg.overlay : 0;
         document.getElementById('zoomRange').value = state.bg.zoom;
         document.getElementById('zoomLabel').textContent = Math.round(state.bg.zoom*100)+'%';
         syncFilterInputs();
