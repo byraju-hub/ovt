@@ -26,6 +26,7 @@
   .panel h2{font-size:13px;margin:0 0 12px;color:var(--sub);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
   .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
   .row:last-child{margin-bottom:0;}
+  .field{display:inline-flex;align-items:center;gap:8px;flex-shrink:0;}
   label.small{color:var(--sub);font-size:12px;min-width:40px;}
   input[type=range]{width:150px;flex:none;}
   button, a.btn{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:7px 12px;border-radius:7px;cursor:pointer;font-size:12.5px;font-family:inherit;text-decoration:none;display:inline-block;}
@@ -99,26 +100,36 @@
     <h2>배경 이미지</h2>
     <div class="row">
       <input type="file" id="bgFile" accept="image/*">
-      <label class="small">확대</label>
-      <input type="range" id="zoomRange" min="1" max="3" step="0.01" value="1">
-      <span id="zoomLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
-      <label class="small">오버레이</label>
-      <input type="range" id="overlayRange" min="0" max="100" step="1" value="0">
-      <span id="overlayLabel" style="width:44px;color:var(--sub);font-size:12px;">0%</span>
+      <span class="field">
+        <label class="small">확대</label>
+        <input type="range" id="zoomRange" min="1" max="3" step="0.01" value="1">
+        <span id="zoomLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
+      </span>
+      <span class="field">
+        <label class="small">오버레이</label>
+        <input type="range" id="overlayRange" min="0" max="100" step="1" value="0">
+        <span id="overlayLabel" style="width:44px;color:var(--sub);font-size:12px;">0%</span>
+      </span>
       <button id="bgReset" class="small">위치 초기화</button>
       <button id="filterReset" class="small">보정 초기화</button>
       <button id="bgClear" class="small danger">이미지 제거</button>
     </div>
     <div class="row">
-      <label class="small">밝기</label>
-      <input type="range" id="brightnessRange" min="50" max="150" step="1" value="100">
-      <span id="brightnessLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
-      <label class="small">대비</label>
-      <input type="range" id="contrastRange" min="50" max="150" step="1" value="100">
-      <span id="contrastLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
-      <label class="small">채도</label>
-      <input type="range" id="saturationRange" min="0" max="200" step="1" value="100">
-      <span id="saturationLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
+      <span class="field">
+        <label class="small">밝기</label>
+        <input type="range" id="brightnessRange" min="50" max="150" step="1" value="100">
+        <span id="brightnessLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
+      </span>
+      <span class="field">
+        <label class="small">대비</label>
+        <input type="range" id="contrastRange" min="50" max="150" step="1" value="100">
+        <span id="contrastLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
+      </span>
+      <span class="field">
+        <label class="small">채도</label>
+        <input type="range" id="saturationRange" min="0" max="200" step="1" value="100">
+        <span id="saturationLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
+      </span>
     </div>
     <div class="hint">캔버스를 드래그하면 배경 이미지를 이동할 수 있어요. 텍스트가 없는 빈 자리를 드래그하면 배경이, 텍스트 위를 드래그하면 그 텍스트 레이어가 움직입니다. 원본 비율은 항상 유지됩니다.</div>
   </section>
@@ -521,10 +532,14 @@ function buildLayerPanel(index){
     <textarea rows="${index===0 ? 6 : 10}" spellcheck="true" placeholder="${PLACEHOLDERS[index] || ''}"></textarea>
     <div class="row" style="margin-top:8px;">
       <select data-field="fontFamily"></select>
-      <label class="small">크기</label>
-      <input type="number" data-field="fontSize" min="8" max="240">
-      <label class="small">색상</label>
-      <input type="color" data-field="color">
+      <span class="field">
+        <label class="small">크기</label>
+        <input type="number" data-field="fontSize" min="8" max="240">
+      </span>
+      <span class="field">
+        <label class="small">색상</label>
+        <input type="color" data-field="color">
+      </span>
     </div>
     <div class="row">
       <div class="align-group" data-field="align">
@@ -535,24 +550,36 @@ function buildLayerPanel(index){
       </div>
       <button class="small" data-field="bold">B</button>
       <button class="small" data-field="italic"><i>I</i></button>
-      <label class="small">줄간격</label>
-      <input type="number" data-field="lineHeight" min="0.8" max="3" step="0.1">
+      <span class="field">
+        <label class="small">줄간격</label>
+        <input type="number" data-field="lineHeight" min="0.8" max="3" step="0.1">
+      </span>
     </div>
     <div class="row">
-      <label class="small">너비</label>
-      <input type="number" data-field="maxWidth" min="200" max="1080" step="10">
+      <span class="field">
+        <label class="small">너비</label>
+        <input type="number" data-field="maxWidth" min="200" max="1080" step="10">
+      </span>
     </div>
     <div class="row">
-      <button class="small" data-field="shadowEnabled">그림자</button>
-      <input type="color" data-field="shadowColor">
-      <label class="small">두께</label>
-      <input type="number" data-field="shadowBlur" min="0" max="60">
+      <span class="field">
+        <button class="small" data-field="shadowEnabled">그림자</button>
+        <input type="color" data-field="shadowColor">
+      </span>
+      <span class="field">
+        <label class="small">두께</label>
+        <input type="number" data-field="shadowBlur" min="0" max="60">
+      </span>
     </div>
     <div class="row">
-      <button class="small" data-field="strokeEnabled">외곽선</button>
-      <input type="color" data-field="strokeColor">
-      <label class="small">두께</label>
-      <input type="number" data-field="strokeWidth" min="0" max="40">
+      <span class="field">
+        <button class="small" data-field="strokeEnabled">외곽선</button>
+        <input type="color" data-field="strokeColor">
+      </span>
+      <span class="field">
+        <label class="small">두께</label>
+        <input type="number" data-field="strokeWidth" min="0" max="40">
+      </span>
       <button class="small" data-field="multiply">Multiply</button>
     </div>
   `;
