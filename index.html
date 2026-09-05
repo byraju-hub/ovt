@@ -27,7 +27,7 @@
   .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
   .row:last-child{margin-bottom:0;}
   label.small{color:var(--sub);font-size:12px;min-width:40px;}
-  input[type=range]{flex:1;min-width:120px;}
+  input[type=range]{width:150px;flex:none;}
   button, a.btn{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:7px 12px;border-radius:7px;cursor:pointer;font-size:12.5px;font-family:inherit;text-decoration:none;display:inline-block;}
   button:hover, a.btn:hover{border-color:var(--accent);}
   button.primary, a.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
@@ -102,7 +102,11 @@
       <label class="small">확대</label>
       <input type="range" id="zoomRange" min="1" max="3" step="0.01" value="1">
       <span id="zoomLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
+      <label class="small">오버레이</label>
+      <input type="range" id="overlayRange" min="0" max="100" step="1" value="0">
+      <span id="overlayLabel" style="width:44px;color:var(--sub);font-size:12px;">0%</span>
       <button id="bgReset" class="small">위치 초기화</button>
+      <button id="filterReset" class="small">보정 초기화</button>
       <button id="bgClear" class="small danger">이미지 제거</button>
     </div>
     <div class="row">
@@ -115,12 +119,6 @@
       <label class="small">채도</label>
       <input type="range" id="saturationRange" min="0" max="200" step="1" value="100">
       <span id="saturationLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
-      <button id="filterReset" class="small">보정 초기화</button>
-    </div>
-    <div class="row">
-      <label class="small">오버레이</label>
-      <input type="range" id="overlayRange" min="0" max="100" step="1" value="0">
-      <span id="overlayLabel" style="width:44px;color:var(--sub);font-size:12px;">0%</span>
     </div>
     <div class="hint">캔버스를 드래그하면 배경 이미지를 이동할 수 있어요. 텍스트가 없는 빈 자리를 드래그하면 배경이, 텍스트 위를 드래그하면 그 텍스트 레이어가 움직입니다. 원본 비율은 항상 유지됩니다.</div>
   </section>
