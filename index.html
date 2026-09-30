@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OVT — One Verse Tool</title>
-<link rel="icon" href="data:,">
+<link rel="icon" href="favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;200;300;400;500;600;700;800;900&family=Noto+Serif+KR:wght@200;300;400;500;600;700;800;900&family=Nanum+Gothic:wght@400;700;800&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Nanum+Brush+Script&family=Do+Hyeon&family=Black+Han+Sans&family=Jua&family=Gaegu:wght@300;400;700&family=Gamja+Flower&family=Poor+Story&family=Song+Myung&family=Stylish&family=Sunflower:wght@300;500;700&family=Cute+Font&family=East+Sea+Dokdo&family=Hi+Melody&family=Kirang+Haerang&family=Yeon+Sung&family=Single+Day&family=Dokdo&family=Gothic+A1:wght@100;200;300;400;500;600;700;800;900&family=IBM+Plex+Sans+KR:wght@100;200;300;400;500;600;700&family=Gowun+Dodum&family=Gowun+Batang:wght@400;700&family=Gugi&family=Hahmlet:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -74,7 +74,7 @@
 
 <header>
   <h1>OVT</h1>
-  <p>One Verse Tool — 묵상 이미지 제작 도구</p>
+  <p>One Verse Tool — 묵상 IMG 제작 도구</p>
   <div id="saveIndicator">저장된 내용 없음</div>
 </header>
 
@@ -83,9 +83,7 @@
   <section class="panel">
     <h2>성경 구절 불러오기</h2>
     <div class="row">
-      <input type="file" id="bibleFile" accept="application/json,.json">
-      <span id="bibleStatus" style="color:var(--sub);font-size:12px;">불러온 구절 데이터 없음</span>
-      <button id="bibleClear" class="small danger">저장된 데이터 지우기</button>
+      <span id="bibleStatus" style="color:var(--sub);font-size:12px;">불러오는 중...</span>
     </div>
     <div class="row">
       <select id="bookSelect"><option value="">권 선택</option></select>
@@ -93,7 +91,7 @@
       <select id="verseSelect" disabled><option value="">절 선택</option></select>
       <button id="applyVerse" class="small primary" disabled>말씀에 적용</button>
     </div>
-    <div class="hint"><code>bible.json</code> 파일을 선택하면 이 브라우저에 저장이 되어, 다음에는 다시 선택하지 않아도 됩니다. '말씀에 적용'을 누르면 [말씀]레이어에 [권 장:절] 본문 형식으로 채워집니다.</div>
+    <div class="hint">'말씀에 적용'을 누르면 [말씀] 레이어에 [권 장:절] 본문 형식으로 채워집니다.</div>
   </section>
 
   <section class="panel">
@@ -139,14 +137,17 @@
       <div class="canvas-wrap"><canvas id="canvas" width="1080" height="1080"></canvas></div>
       <div class="col-actions">
         <button class="primary" id="exportBtn">이미지 내보내기</button>
+        <button class="primary" id="wpPublishBtn">워드프레스에 저장</button>
         <button class="danger" id="resetAll">전체 초기화</button>
         <button id="actualSizeBtn">실제 사이즈</button>
+        <a class="btn" href="https://byraju.mycafe24.com/wp" target="_blank" rel="noopener noreferrer" title="워드프레스 바로가기">↗</a>
       </div>
+      <div id="wpStatus" class="hint"></div>
     </div>
     <div class="panels-col" data-layers></div>
   </div>
 
-  <footer>작업 내용은 이 브라우저에 자동 저장됩니다.<br>다른 브라우저/기기에서는 작업 내용이 이어지지 않습니다.<br><br>ⓒ 2026 byraju with Claude. All Rights Reserved.</footer>
+  <footer>작업 내용은 이 브라우저와 서버(DB)에 자동 저장됩니다.<br><br>ⓒ 2026 byraju with Claude. All Rights Reserved.</footer>
 </main>
 
 <div class="modal-overlay" id="sizeModal">
@@ -181,7 +182,7 @@ const LAYER_LABELS = ['말씀', '묵상글'];
 function defaultLayers(){
   const shadow = {shadowEnabled:false, shadowColor:'#000000', shadowBlur:12};
   const stroke = {strokeEnabled:false, strokeColor:'#000000', strokeWidth:4};
-  const blend = {multiply:false};
+  const blend = {multiply:false, shadowMultiply:false};
   return [
     {text:'', visible:true, fontFamily:'Poor Story', fontSize:40, color:'#ffffff', align:'center', bold:true,  italic:false, lineHeight:1.6, x:0.5, y:0.38, maxWidth:600, ...shadow, ...stroke, ...blend},
     {text:'', visible:true, fontFamily:'Poor Story', fontSize:40, color:'#ffffff', align:'justify', bold:true, italic:false, lineHeight:1.6, x:0.5, y:0.52, maxWidth:620, ...shadow, ...stroke, ...blend},
@@ -205,6 +206,7 @@ const state = {
 let dragging = null;
 let autosaveTimer = null;
 let dateTextareaEl = null;
+let hashtagTextareaEl = null;
 
 // ---------- rendering ----------
 
@@ -338,7 +340,24 @@ function drawLayer(ctx, layer){
       if(layer.multiply) ctx.globalCompositeOperation = 'source-over';
     }
 
-    if(layer.shadowEnabled){
+    if(layer.shadowEnabled && layer.shadowMultiply){
+      // A canvas shadow is drawn together with its glyphs, so it can't take
+      // its own blend mode. Instead the glyphs are drawn far off-canvas and
+      // shadowOffsetX brings only their shadow back into view, composited
+      // with multiply. The visible fill below is then drawn with no shadow.
+      const OFF = CANVAS_SIZE * 2;
+      ctx.shadowColor = layer.shadowColor;
+      ctx.shadowBlur = layer.shadowBlur;
+      ctx.shadowOffsetX = OFF;
+      ctx.shadowOffsetY = 0;
+      ctx.globalCompositeOperation = 'multiply';
+      if(positions) positions.forEach(p => ctx.fillText(p.ch, p.x - OFF, ly));
+      else ctx.fillText(line, lx - OFF, ly);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+    } else if(layer.shadowEnabled){
       ctx.shadowColor = layer.shadowColor;
       ctx.shadowBlur = layer.shadowBlur;
       ctx.shadowOffsetX = 0;
@@ -570,6 +589,7 @@ function buildLayerPanel(index){
         <label class="small">두께</label>
         <input type="number" data-field="shadowBlur" min="0" max="60">
       </span>
+      <button class="small" data-field="shadowMultiply">Multiply</button>
     </div>
     <div class="row">
       <span class="field">
@@ -601,6 +621,7 @@ function buildLayerPanel(index){
   const strokeColor = wrap.querySelector('[data-field=strokeColor]');
   const strokeWidth = wrap.querySelector('[data-field=strokeWidth]');
   const multiplyBtn = wrap.querySelector('[data-field=multiply]');
+  const shadowMultiplyBtn = wrap.querySelector('[data-field=shadowMultiply]');
   const maxWidth = wrap.querySelector('[data-field=maxWidth]');
 
   FONTS.forEach(f=>{
@@ -635,6 +656,7 @@ function buildLayerPanel(index){
     strokeWidth.disabled = !layer.strokeEnabled;
 
     multiplyBtn.classList.toggle('toggle-on', layer.multiply);
+    shadowMultiplyBtn.classList.toggle('toggle-on', !!layer.shadowMultiply);
 
     maxWidth.value = layer.maxWidth;
   }
@@ -654,10 +676,8 @@ function buildLayerPanel(index){
 
   if(index === 1){
     const spellBtn = wrap.querySelector('[data-act=spellcheck]');
-    // A real <a target="_blank"> click is used instead of window.open() —
-    // the Artifact viewer's sandbox blocks script-initiated popups, but a
-    // genuine anchor click still opens a new tab. Copying happens alongside,
-    // without blocking the link's own navigation.
+    // Copying happens alongside the link's own navigation, so the text is on
+    // the clipboard by the time the spellchecker tab opens.
     spellBtn.addEventListener('click', ()=>{
       copyTextToClipboard(textarea.value);
       const original = spellBtn.textContent;
@@ -673,6 +693,7 @@ function buildLayerPanel(index){
   strokeColor.addEventListener('input', ()=>{ layer.strokeColor = strokeColor.value; commit(); });
   strokeWidth.addEventListener('input', ()=>{ layer.strokeWidth = Number(strokeWidth.value)||0; commit(); });
   multiplyBtn.addEventListener('click', ()=>{ layer.multiply = !layer.multiply; refreshUI(); commit(); });
+  shadowMultiplyBtn.addEventListener('click', ()=>{ layer.shadowMultiply = !layer.shadowMultiply; refreshUI(); commit(); });
   maxWidth.addEventListener('input', ()=>{ layer.maxWidth = Number(maxWidth.value)||layer.maxWidth; commit(); });
 
   refreshUI();
@@ -791,6 +812,18 @@ async function copyTextToClipboard(text){
   }catch(e){ return false; }
 }
 
+function combinedText(){
+  return [
+    dateTextareaEl ? dateTextareaEl.value : '',
+    '-',
+    state.layers[0].text,
+    '-----',
+    state.layers[1].text,
+    '-',
+    hashtagTextareaEl ? hashtagTextareaEl.value : ''
+  ].join('\n');
+}
+
 function buildCombinedCopyPanel(dateTextarea, hashtagTextarea){
   const wrap = document.createElement('div');
   wrap.className = 'layer-card';
@@ -801,15 +834,7 @@ function buildCombinedCopyPanel(dateTextarea, hashtagTextarea){
   `;
   const btn = wrap.querySelector('[data-act=copyall]');
   btn.addEventListener('click', async ()=>{
-    const combined = [
-      dateTextarea.value,
-      '-',
-      state.layers[0].text,
-      '-----',
-      state.layers[1].text,
-      '-',
-      hashtagTextarea.value
-    ].join('\n');
+    const combined = combinedText();
     const copied = await copyTextToClipboard(combined);
     btn.textContent = copied ? '복사됨' : '복사 실패';
     setTimeout(()=>{ btn.textContent = '텍스트 복사'; }, 1200);
@@ -828,6 +853,7 @@ function buildAllPanels(){
   dateTextareaEl = datePanel._textarea;
   const hashtagPanel = buildCopyTextPanel('해시태그', 'ovt_copytext_2',
     '#겸목사말씀묵상 #하루에말씀한절 #oneverseaday #QT #묵상');
+  hashtagTextareaEl = hashtagPanel._textarea;
   container.appendChild(datePanel);
   container.appendChild(hashtagPanel);
   container.appendChild(buildCombinedCopyPanel(datePanel._textarea, hashtagPanel._textarea));
@@ -961,58 +987,15 @@ document.getElementById('bgClear').addEventListener('click', ()=>{
 // ---------- bible verse loader ----------
 
 const bibleState = { data: null };
+// The .gz copy is ~1.5MB against 7.7MB for the plain file and the browser
+// decompresses it transparently (the server sends Content-Encoding: gzip).
+// The uncompressed file stays on the server as a fallback.
+const BIBLE_JSON_URLS = ['bible.json.gz', 'bible.json'];
 
 function resetSelect(id, placeholder, disabled){
   const sel = document.getElementById(id);
   sel.innerHTML = `<option value="">${placeholder}</option>`;
   sel.disabled = disabled;
-}
-
-// bible.json (several MB) is too big for localStorage, so it's cached in
-// IndexedDB after the first manual pick — later visits restore it
-// automatically without asking the user to attach the file again.
-const IDB_NAME = 'ovt-db', IDB_STORE = 'kv';
-
-function idbOpen(){
-  return new Promise((resolve, reject)=>{
-    const req = indexedDB.open(IDB_NAME, 1);
-    req.onupgradeneeded = ()=>{ req.result.createObjectStore(IDB_STORE); };
-    req.onsuccess = ()=> resolve(req.result);
-    req.onerror = ()=> reject(req.error);
-  });
-}
-async function idbSet(key, value){
-  try{
-    const db = await idbOpen();
-    return await new Promise((resolve, reject)=>{
-      const tx = db.transaction(IDB_STORE, 'readwrite');
-      tx.objectStore(IDB_STORE).put(value, key);
-      tx.oncomplete = ()=> resolve(true);
-      tx.onerror = ()=> reject(tx.error);
-    });
-  }catch(e){ return false; }
-}
-async function idbGet(key){
-  try{
-    const db = await idbOpen();
-    return await new Promise((resolve, reject)=>{
-      const tx = db.transaction(IDB_STORE, 'readonly');
-      const req = tx.objectStore(IDB_STORE).get(key);
-      req.onsuccess = ()=> resolve(req.result);
-      req.onerror = ()=> reject(req.error);
-    });
-  }catch(e){ return undefined; }
-}
-async function idbDelete(key){
-  try{
-    const db = await idbOpen();
-    return await new Promise(resolve=>{
-      const tx = db.transaction(IDB_STORE, 'readwrite');
-      tx.objectStore(IDB_STORE).delete(key);
-      tx.oncomplete = ()=> resolve(true);
-      tx.onerror = ()=> resolve(false);
-    });
-  }catch(e){ return false; }
 }
 
 function applyBibleData(json, statusText){
@@ -1031,41 +1014,21 @@ function applyBibleData(json, statusText){
   document.getElementById('applyVerse').disabled = true;
 }
 
-document.getElementById('bibleFile').addEventListener('change', e=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev=>{
+async function loadFixedBibleData(){
+  document.getElementById('bibleStatus').textContent = '불러오는 중...';
+  for(const url of BIBLE_JSON_URLS){
     try{
-      const json = JSON.parse(ev.target.result);
-      if(!Array.isArray(json.books)) throw new Error('missing books array');
-      applyBibleData(json, `불러옴: ${file.name} (${json.books.length}권)`);
-      idbSet('bibleData', json);
-    }catch(err){
-      bibleState.data = null;
-      document.getElementById('bibleStatus').textContent = 'JSON 파싱 실패: bible.json 형식을 확인해주세요.';
-    }
-  };
-  reader.readAsText(file);
-});
-
-document.getElementById('bibleClear').addEventListener('click', async ()=>{
-  await idbDelete('bibleData');
-  bibleState.data = null;
-  document.getElementById('bibleFile').value = '';
-  document.getElementById('bibleStatus').textContent = '불러온 구절 데이터 없음';
-  resetSelect('bookSelect', '권 선택', false);
-  resetSelect('chapterSelect', '장 선택', true);
-  resetSelect('verseSelect', '절 선택', true);
-  document.getElementById('applyVerse').disabled = true;
-});
-
-(async ()=>{
-  const cached = await idbGet('bibleData');
-  if(cached && Array.isArray(cached.books)){
-    applyBibleData(cached, `저장된 데이터 사용 중 (${cached.books.length}권)`);
+      const res = await fetch(url);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const json = await res.json();
+      if(!Array.isArray(json.books)) throw new Error('형식 오류');
+      applyBibleData(json, `불러옴 (${json.books.length}권)`);
+      return;
+    }catch(e){ /* fall through to the next source */ }
   }
-})();
+  bibleState.data = null;
+  document.getElementById('bibleStatus').textContent = '성경 데이터를 불러오지 못했습니다.';
+}
 
 document.getElementById('bookSelect').addEventListener('change', e=>{
   const bookIdx = e.target.value;
@@ -1125,18 +1088,6 @@ document.getElementById('applyVerse').addEventListener('click', ()=>{
 function pad(n){ return String(n).padStart(2,'0'); }
 
 async function saveBlob(filename, blob){
-  if(window.claude && typeof window.claude.use === 'function'){
-    try{
-      const downloads = await window.claude.use('downloads');
-      if(downloads){
-        await downloads.save({filename, data: blob});
-        return;
-      }
-    }catch(e){
-      // not running inside an Artifact viewer, or the viewer declined/lacks the
-      // capability — fall through to a normal browser download below.
-    }
-  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;
@@ -1190,10 +1141,138 @@ async function exportImage(){
 
 document.getElementById('exportBtn').addEventListener('click', exportImage);
 
+// ---------- wordpress publish ----------
+
+const OVT_WP_ENDPOINT = '/ovt/api.php?route=publish';
+const OVT_WP_CHUNK_ENDPOINT = '/ovt/api.php?route=chunk';
+const OVT_CHUNK_SIZE = 60000; // base64 chars per chunk (~45KB raw); the host's
+// front proxy silently 404s any POST body over roughly 128KB, so images are
+// uploaded in small pieces to /chunk and assembled server-side before /publish.
+
+function ovtRandomId(){
+  return 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
+async function uploadBase64InChunks(base64){
+  const uploadId = ovtRandomId();
+  for(let i = 0, idx = 0; i < base64.length; i += OVT_CHUNK_SIZE, idx++){
+    const piece = base64.slice(i, i + OVT_CHUNK_SIZE);
+    const res = await fetch(OVT_WP_CHUNK_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ upload_id: uploadId, index: idx, data: piece })
+    });
+    if(!res.ok) throw new Error('chunk upload failed at index ' + idx);
+    const data = await res.json().catch(()=>({}));
+    if(!data.ok) throw new Error('chunk upload failed at index ' + idx);
+  }
+  return uploadId;
+}
+
+function utf8ToBase64(str){
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary);
+}
+
+async function uploadImageInChunks(dataUrl){
+  if(!dataUrl) return null;
+  const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+  return uploadBase64InChunks(base64);
+}
+
+function buildWpTitle(){
+  let dateFirst = (dateTextareaEl ? dateTextareaEl.value.split('\n')[0] : '').trim();
+  dateFirst = dateFirst.replace(/(\S)요일$/, '($1)');
+  let verseRef = (state.layers[0].text.split('\n')[0] || '').trim();
+  verseRef = verseRef.replace(/^\[\s*/, '').replace(/\s*\]$/, '');
+  return [dateFirst, verseRef].filter(Boolean).join(' ');
+}
+
+// The 게시 날짜 on WordPress should reflect the date panel (which day this
+// verse is for), not the moment the "저장" button happened to be pressed —
+// a post prepared the night before for tomorrow should still show tomorrow's
+// date once published.
+function buildPostDate(){
+  const line = (dateTextareaEl ? dateTextareaEl.value.split('\n')[0] : '').trim();
+  const m = line.match(/(\d{4})\/(\d{2})\/(\d{2})/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+}
+
+function captureExportImages(){
+  const canvas = document.getElementById('canvas');
+  const savedGuide = state.guide;
+  const savedVisible0 = state.layers[0].visible;
+  const savedVisible1 = state.layers[1].visible;
+  state.guide = {x:false,y:false};
+  let image1, image2;
+  try{
+    state.layers[0].visible = true;
+    state.layers[1].visible = false;
+    render();
+    image1 = canvas.toDataURL('image/jpeg', 0.92);
+
+    state.layers[0].visible = false;
+    state.layers[1].visible = true;
+    render();
+    image2 = canvas.toDataURL('image/jpeg', 0.92);
+  } finally {
+    state.layers[0].visible = savedVisible0;
+    state.layers[1].visible = savedVisible1;
+    state.guide = savedGuide;
+    render();
+  }
+  return { image1, image2 };
+}
+
+async function publishToWordPress(){
+  const btn = document.getElementById('wpPublishBtn');
+  const status = document.getElementById('wpStatus');
+  const title = buildWpTitle();
+  const content = combinedText();
+
+  if(!state.layers[0].text.trim() || !state.layers[1].text.trim()){
+    status.textContent = '말씀과 묵상글을 먼저 입력하세요.';
+    return;
+  }
+
+  const { image1, image2 } = captureExportImages();
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '이미지 업로드 중...';
+  status.textContent = '';
+
+  try{
+    const image1_upload = await uploadImageInChunks(image1);
+    const image2_upload = await uploadImageInChunks(image2);
+
+    btn.textContent = '게시 중...';
+    const post_date = buildPostDate();
+    const res = await fetch(OVT_WP_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, content, image1_upload, image2_upload, post_date })
+    });
+    const data = await res.json().catch(()=>({}));
+    if(res.ok && data.ok){
+      status.innerHTML = '게시 완료: <a href="'+data.link+'" target="_blank" rel="noopener noreferrer">'+data.link+'</a>';
+    } else {
+      status.textContent = '게시 실패: ' + (data.message || res.status);
+    }
+  }catch(e){
+    status.textContent = '게시 실패: 네트워크 오류';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+
+document.getElementById('wpPublishBtn').addEventListener('click', publishToWordPress);
+
 // ---------- reset ----------
-// window.confirm() is blocked (silently returns false) inside the sandboxed
-// Artifact viewer, which made this button appear to do nothing there. Use a
-// two-click in-page confirmation instead — works identically everywhere.
+// Two-click in-page confirmation instead of window.confirm(), so the warning
+// can't be suppressed by a browser's "block further dialogs" checkbox.
 
 (function setupResetAll(){
   const btn = document.getElementById('resetAll');
@@ -1201,7 +1280,7 @@ document.getElementById('exportBtn').addEventListener('click', exportImage);
   let confirming = false;
   let confirmTimer = null;
 
-  btn.addEventListener('click', ()=>{
+  btn.addEventListener('click', async ()=>{
     if(!confirming){
       confirming = true;
       btn.textContent = '정말 초기화? (다시 클릭)';
@@ -1212,7 +1291,15 @@ document.getElementById('exportBtn').addEventListener('click', exportImage);
       return;
     }
     clearTimeout(confirmTimer);
+    clearTimeout(autosaveTimer);
+    clearTimeout(serverSyncTimer);
+    btn.textContent = '초기화 중...';
     try{ localStorage.removeItem('ovt_state_v2'); }catch(e){}
+    // The server copy has to be cleared too, or the next load would pull the
+    // work straight back in from the cross-device sync.
+    state.bg = { img:null, dataURL:null, natW:0, natH:0, zoom:1, dx:0, dy:0, brightness:100, contrast:100, saturation:100, overlay:0 };
+    state.layers = defaultLayers();
+    await pushStateToServer(buildSaveData());
     location.reload();
   });
 })();
@@ -1244,14 +1331,60 @@ document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && sizeModal.cla
 function stripLayer(l){
   return {text:l.text, visible:l.visible, fontFamily:l.fontFamily, fontSize:l.fontSize, color:l.color, align:l.align, bold:l.bold, italic:l.italic, lineHeight:l.lineHeight, x:l.x, y:l.y, maxWidth:l.maxWidth,
     shadowEnabled:l.shadowEnabled, shadowColor:l.shadowColor, shadowBlur:l.shadowBlur,
-    strokeEnabled:l.strokeEnabled, strokeColor:l.strokeColor, strokeWidth:l.strokeWidth, multiply:l.multiply};
+    strokeEnabled:l.strokeEnabled, strokeColor:l.strokeColor, strokeWidth:l.strokeWidth, multiply:l.multiply, shadowMultiply:l.shadowMultiply};
 }
 
-function saveState(){
-  const data = {
+const OVT_STATE_LOAD_ENDPOINT = '/ovt/api.php?route=state-load';
+const OVT_STATE_SAVE_ENDPOINT = '/ovt/api.php?route=state-save';
+let serverSyncTimer = null;
+
+function buildSaveData(){
+  return {
+    ts: Date.now(),
     bg: { dataURL: state.bg.dataURL, zoom: state.bg.zoom, dx: state.bg.dx, dy: state.bg.dy, brightness: state.bg.brightness, contrast: state.bg.contrast, saturation: state.bg.saturation, overlay: state.bg.overlay },
     layers: state.layers.map(stripLayer)
   };
+}
+
+// Tracks the background already on the server, so editing text doesn't
+// re-upload a multi-megabyte photo that hasn't changed.
+let syncedBgDataURL = null;
+
+async function pushStateToServer(data){
+  try{
+    const bgDataURL = data.bg.dataURL || null;
+
+    // The background goes first: the text slot no longer carries the photo, so
+    // writing it before the photo is safely stored would leave the server
+    // holding a draft whose background is nowhere.
+    if(bgDataURL !== syncedBgDataURL){
+      const body = bgDataURL
+        ? { slot: 'bg', upload_id: await uploadBase64InChunks(utf8ToBase64(bgDataURL)) }
+        : { slot: 'bg', state: '' };
+      const res = await fetch(OVT_STATE_SAVE_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if(!res.ok) throw new Error('background sync failed');
+      syncedBgDataURL = bgDataURL;
+    }
+
+    // Text and settings are a couple of KB, so they go in one small request.
+    const textOnly = { ...data, bg: { ...data.bg, dataURL: null } };
+    await fetch(OVT_STATE_SAVE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slot: 'text', state: JSON.stringify(textOnly) })
+    });
+  }catch(e){
+    // best-effort — the localStorage save already succeeded, so this device
+    // keeps working even if the cross-device sync push failed.
+  }
+}
+
+function saveState(){
+  const data = buildSaveData();
   try{
     localStorage.setItem('ovt_state_v2', JSON.stringify(data));
     const now = new Date();
@@ -1259,6 +1392,8 @@ function saveState(){
   }catch(e){
     document.getElementById('saveIndicator').textContent = '자동 저장 실패 (저장 공간 부족)';
   }
+  clearTimeout(serverSyncTimer);
+  serverSyncTimer = setTimeout(()=>{ pushStateToServer(data); }, 1500);
 }
 
 function scheduleAutosave(){
@@ -1266,12 +1401,7 @@ function scheduleAutosave(){
   autosaveTimer = setTimeout(saveState, 500);
 }
 
-function loadState(){
-  const raw = localStorage.getItem('ovt_state_v2');
-  if(!raw) return;
-  let data;
-  try{ data = JSON.parse(raw); } catch(e){ return; }
-
+function applyLoadedState(data, sourceLabel){
   if(Array.isArray(data.layers)){
     data.layers.forEach((saved, i)=>{
       if(!state.layers[i]) return;
@@ -1313,7 +1443,59 @@ function loadState(){
   } else {
     render();
   }
-  document.getElementById('saveIndicator').textContent = '이전 작업 내용을 불러왔어요';
+  document.getElementById('saveIndicator').textContent = sourceLabel || '이전 작업 내용을 불러왔어요';
+}
+
+async function loadState(){
+  let localData = null;
+  try{
+    const raw = localStorage.getItem('ovt_state_v2');
+    if(raw) localData = JSON.parse(raw);
+  }catch(e){}
+
+  let serverData = null, serverBgSlot = null;
+  try{
+    const res = await fetch(OVT_STATE_LOAD_ENDPOINT);
+    if(res.ok){
+      const json = await res.json();
+      if(json && json.ok && json.state){
+        serverData = JSON.parse(json.state);
+        serverBgSlot = json.bg || null;
+        // The background lives in its own slot; drafts saved before that split
+        // still carry it inline, so only fill in what's missing.
+        if(!serverData.bg.dataURL && serverBgSlot) serverData.bg.dataURL = serverBgSlot;
+      }
+    }
+  }catch(e){}
+
+  let data = null, fromServer = false;
+  if(serverData && localData){
+    fromServer = (serverData.ts||0) > (localData.ts||0);
+    data = fromServer ? serverData : localData;
+  } else if(serverData || localData){
+    fromServer = !!serverData;
+    data = serverData || localData;
+  }
+  if(!data){ render(); return; }
+
+  // A background is never dropped just because the copy we loaded lacks one:
+  // an interrupted sync could otherwise wipe a photo this browser still holds.
+  if(!data.bg.dataURL && localData && localData.bg && localData.bg.dataURL){
+    data.bg.dataURL = localData.bg.dataURL;
+  }
+
+  // Only what is actually in the server's background slot counts as synced.
+  // A draft saved before the slots were split has its photo inline, so this
+  // stays null and the next save uploads it into the slot.
+  syncedBgDataURL = serverBgSlot;
+
+  applyLoadedState(data, fromServer ? '다른 기기에서 저장된 내용을 불러왔어요' : '이전 작업 내용을 불러왔어요');
+
+  if(fromServer){
+    try{ localStorage.setItem('ovt_state_v2', JSON.stringify(data)); }catch(e){}
+  } else {
+    pushStateToServer(data);
+  }
 }
 
 // ---------- init ----------
@@ -1326,6 +1508,7 @@ if(document.fonts){
   document.fonts.ready.then(render);
 }
 loadState();
+loadFixedBibleData();
 </script>
 </body>
 </html>
