@@ -845,17 +845,19 @@ function buildCombinedCopyPanel(dateTextarea, hashtagTextarea){
 function buildAllPanels(){
   const container = document.querySelector('.panels-col');
   state.layers.forEach((layer, i)=>{
-    const panel = buildLayerPanel(i);
-    container.appendChild(panel);
-    state.panels[i] = panel;
+    state.panels[i] = buildLayerPanel(i);
   });
   const datePanel = buildDateTextPanel();
   dateTextareaEl = datePanel._textarea;
   const hashtagPanel = buildCopyTextPanel('해시태그', 'ovt_copytext_2',
     '#겸목사말씀묵상 #하루에말씀한절 #oneverseaday #QT #묵상');
   hashtagTextareaEl = hashtagPanel._textarea;
+  // display order: 날짜 / 말씀 / 묵상글 / 해시태그 / 타이틀·고정 / 전체 복사
   container.appendChild(datePanel);
-  container.appendChild(hashtagPanel);
+  state.panels.forEach((panel, i)=>{
+    if(i === FIXED_LAYER_INDEX) container.appendChild(hashtagPanel);
+    container.appendChild(panel);
+  });
   container.appendChild(buildCombinedCopyPanel(datePanel._textarea, hashtagPanel._textarea));
 }
 
