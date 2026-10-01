@@ -7,7 +7,7 @@
 <link rel="icon" href="favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;200;300;400;500;600;700;800;900&family=Noto+Serif+KR:wght@200;300;400;500;600;700;800;900&family=Nanum+Gothic:wght@400;700;800&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Nanum+Brush+Script&family=Do+Hyeon&family=Black+Han+Sans&family=Jua&family=Gaegu:wght@300;400;700&family=Gamja+Flower&family=Poor+Story&family=Song+Myung&family=Stylish&family=Sunflower:wght@300;500;700&family=Cute+Font&family=East+Sea+Dokdo&family=Hi+Melody&family=Kirang+Haerang&family=Yeon+Sung&family=Single+Day&family=Dokdo&family=Gothic+A1:wght@100;200;300;400;500;600;700;800;900&family=IBM+Plex+Sans+KR:wght@100;200;300;400;500;600;700&family=Gowun+Dodum&family=Gowun+Batang:wght@400;700&family=Gugi&family=Hahmlet:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet';window.ovtFontsCssReady&&window.ovtFontsCssReady()" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;200;300;400;500;600;700;800;900&family=Noto+Serif+KR:wght@200;300;400;500;600;700;800;900&family=Nanum+Gothic:wght@400;700;800&family=Nanum+Myeongjo:wght@400;700;800&family=Nanum+Pen+Script&family=Nanum+Brush+Script&family=Do+Hyeon&family=Black+Han+Sans&family=Jua&family=Gaegu:wght@300;400;700&family=Gamja+Flower&family=Poor+Story&family=Song+Myung&family=Stylish&family=Sunflower:wght@300;500;700&family=Cute+Font&family=East+Sea+Dokdo&family=Hi+Melody&family=Kirang+Haerang&family=Yeon+Sung&family=Single+Day&family=Dokdo&family=Gothic+A1:wght@100;200;300;400;500;600;700;800;900&family=IBM+Plex+Sans+KR:wght@100;200;300;400;500;600;700&family=Gowun+Dodum&family=Gowun+Batang:wght@400;700&family=Gugi&family=Hahmlet:wght@100;200;300;400;500;600;700;800;900&display=swap">
 <style>
   :root{
     --bg:#1b1c20; --panel:#232429; --panel2:#2b2d33; --line:#383a42;
@@ -52,6 +52,14 @@
   .layer-card .head strong{font-size:12.5px;}
   .fixed-note{background:var(--bg);border:1px dashed var(--line);border-radius:6px;padding:8px;color:var(--sub);font-size:12.5px;margin-bottom:8px;}
   textarea{width:100%;resize:vertical;min-height:44px;background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:13px;}
+  input[type=text]{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px 8px;font-family:inherit;font-size:12px;width:140px;}
+  .recent{margin-top:10px;font-size:12px;color:var(--sub);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
+  .recent .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+  .recent .item{padding:3px 0;line-height:1.5;}
+  .recent a{color:var(--text);text-decoration:none;}
+  .recent a:hover{text-decoration:underline;}
+  .recent .ok{color:#7bd88f;} .recent .bad{color:#ff8fa3;} .recent .wait{color:#f2c86b;}
+  .over{color:#ff8fa3 !important;}
   select, input[type=number], input[type=color]{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px 6px;font-family:inherit;font-size:12px;}
   select{max-width:150px;}
   input[type=number]{width:56px;}
@@ -61,6 +69,8 @@
 
   footer{color:var(--sub);font-size:12px;text-align:center;padding:20px;}
   .hint{color:var(--sub);font-size:11.5px;margin-top:8px;}
+  .warn{color:#ffb4c1;background:rgba(255,91,122,.12);border:1px solid var(--accent2);border-radius:6px;padding:6px 8px;font-size:12px;margin-top:8px;}
+  .warn a{color:#ffd6de;}
 
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;z-index:1000;padding:24px;}
   .modal-overlay.open{display:flex;}
@@ -89,9 +99,11 @@
       <select id="bookSelect"><option value="">권 선택</option></select>
       <select id="chapterSelect" disabled><option value="">장 선택</option></select>
       <select id="verseSelect" disabled><option value="">절 선택</option></select>
+      <span style="color:var(--sub);">~</span>
+      <select id="verseEndSelect" disabled><option value="">끝 절 (선택)</option></select>
       <button id="applyVerse" class="small primary" disabled>말씀에 적용</button>
     </div>
-    <div class="hint">'말씀에 적용'을 누르면 [말씀] 레이어에 [권 장:절] 본문 형식으로 채워집니다.</div>
+    <div class="hint">'말씀에 적용'을 누르면 [말씀] 레이어에 [권 장:절] 본문 형식으로 채워집니다. 끝 절을 고르면 여러 절이 [권 장:시작-끝] 형식으로 이어서 들어갑니다.</div>
   </section>
 
   <section class="panel">
@@ -132,17 +144,37 @@
     <div class="hint">캔버스를 드래그하면 배경 이미지를 이동할 수 있어요. 텍스트가 없는 빈 자리를 드래그하면 배경이, 텍스트 위를 드래그하면 그 텍스트 레이어가 움직입니다. 원본 비율은 항상 유지됩니다.</div>
   </section>
 
+  <section class="panel">
+    <h2>스타일 프리셋</h2>
+    <div class="row">
+      <select id="presetSelect"><option value="">저장된 프리셋 없음</option></select>
+      <button id="presetApply" class="small primary">적용</button>
+      <button id="presetDelete" class="small danger">삭제</button>
+      <input type="text" id="presetName" placeholder="새 프리셋 이름" maxlength="30">
+      <button id="presetSave" class="small">현재 스타일 저장</button>
+      <span id="presetMsg" style="color:var(--sub);font-size:12px;"></span>
+    </div>
+    <div class="hint">말씀·묵상글의 글꼴·크기·색·정렬·줄간격·너비·위치·그림자·외곽선과 배경 보정(밝기·대비·채도·오버레이)을 저장합니다. 글 내용과 사진은 바뀌지 않아요. 같은 이름으로 저장하면 덮어씁니다.</div>
+  </section>
+
   <div class="editor">
     <div class="canvas-col">
       <div class="canvas-wrap"><canvas id="canvas" width="1080" height="1080"></canvas></div>
+      <div id="overflowWarn" class="warn" style="display:none;"></div>
       <div class="col-actions">
         <button class="primary" id="exportBtn">이미지 내보내기</button>
         <button class="primary" id="wpPublishBtn">워드프레스에 저장</button>
         <button class="danger" id="resetAll">전체 초기화</button>
         <button id="actualSizeBtn">실제 사이즈</button>
+        <button id="undoBtn" title="되돌리기 (Ctrl+Z)" disabled>↶</button>
+        <button id="redoBtn" title="다시 실행 (Ctrl+Y)" disabled>↷</button>
         <a class="btn" href="https://byraju.mycafe24.com/wp" target="_blank" rel="noopener noreferrer" title="워드프레스 바로가기">↗</a>
       </div>
       <div id="wpStatus" class="hint"></div>
+      <div id="recentStatus" class="recent">
+        <div class="head"><strong>최근 게시 상태</strong><button class="small" id="recentRefresh">새로고침</button></div>
+        <div id="recentList">불러오는 중...</div>
+      </div>
     </div>
     <div class="panels-col" data-layers></div>
   </div>
@@ -207,6 +239,8 @@ let dragging = null;
 let autosaveTimer = null;
 let dateTextareaEl = null;
 let hashtagTextareaEl = null;
+let datePanelEl = null;
+let hashtagPanelEl = null;
 
 // ---------- rendering ----------
 
@@ -379,10 +413,9 @@ function clamp255(v){ return v<0 ? 0 : (v>255 ? 255 : v); }
 // with drawImage, so brightness/contrast/saturation are applied manually on
 // pixel data instead of relying on ctx.filter — this works identically on
 // every platform.
-function applyImageAdjustments(ctx, brightness, contrast, saturation){
-  if(brightness===100 && contrast===100 && saturation===100) return;
+function applyImageAdjustments(ctx, w, h, brightness, contrast, saturation){
   const bF = brightness/100, cF = contrast/100, sF = saturation/100;
-  const imgData = ctx.getImageData(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  const imgData = ctx.getImageData(0, 0, w, h);
   const d = imgData.data;
   for(let i=0;i<d.length;i+=4){
     let r=d[i]*bF, g=d[i+1]*bF, b=d[i+2]*bF;
@@ -396,6 +429,33 @@ function applyImageAdjustments(ctx, brightness, contrast, saturation){
   ctx.putImageData(imgData, 0, 0);
 }
 
+// The adjusted photo only depends on the photo and the three sliders, so it
+// is computed once and reused; dragging text or the background then just
+// redraws it instead of re-processing every pixel on each mouse move.
+const adjustedBgCache = { img:null, key:'', canvas:null };
+
+function adjustedBackground(){
+  const b = state.bg;
+  if(b.brightness===100 && b.contrast===100 && b.saturation===100) return b.img;
+  const key = `${b.brightness}|${b.contrast}|${b.saturation}`;
+  if(adjustedBgCache.img === b.img && adjustedBgCache.key === key) return adjustedBgCache.canvas;
+  const c = (adjustedBgCache.img === b.img && adjustedBgCache.canvas) || document.createElement('canvas');
+  c.width = b.natW; c.height = b.natH;
+  const cx = c.getContext('2d', { willReadFrequently: true });
+  cx.drawImage(b.img, 0, 0, b.natW, b.natH);
+  applyImageAdjustments(cx, b.natW, b.natH, b.brightness, b.contrast, b.saturation);
+  Object.assign(adjustedBgCache, { img:b.img, key, canvas:c });
+  return c;
+}
+
+// Coalesces bursts of slider/pointer events into one draw per frame.
+let renderQueued = false;
+function requestRender(){
+  if(renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(()=>{ renderQueued = false; render(); });
+}
+
 function render(){
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
@@ -404,8 +464,7 @@ function render(){
   if(state.bg.img){
     const scale = baseScale()*state.bg.zoom;
     const drawW = state.bg.natW*scale, drawH = state.bg.natH*scale;
-    ctx.drawImage(state.bg.img, state.bg.dx, state.bg.dy, drawW, drawH);
-    applyImageAdjustments(ctx, state.bg.brightness, state.bg.contrast, state.bg.saturation);
+    ctx.drawImage(adjustedBackground(), state.bg.dx, state.bg.dy, drawW, drawH);
   } else {
     ctx.fillStyle = '#2c2d33';
     ctx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
@@ -422,6 +481,8 @@ function render(){
   }
 
   state.layers.forEach(layer => drawLayer(ctx, layer));
+  updateOverflowWarning();
+  updateCharCount();
 
   if(state.guide.x || state.guide.y){
     ctx.save();
@@ -432,6 +493,21 @@ function render(){
     if(state.guide.y){ ctx.beginPath(); ctx.moveTo(0,CANVAS_SIZE/2); ctx.lineTo(CANVAS_SIZE,CANVAS_SIZE/2); ctx.stroke(); }
     ctx.restore();
   }
+}
+
+// Both text layers end up in an exported image (one each) even while hidden
+// in the editor, so either one running past the canvas edge gets flagged.
+function updateOverflowWarning(){
+  const el = document.getElementById('overflowWarn');
+  if(!el) return;
+  const out = [];
+  [0, 1].forEach(i=>{
+    const layer = state.layers[i], b = layer._bbox;
+    if(!b || !layer.text.trim()) return;
+    if(b.x < 0 || b.y < 0 || b.x + b.w > CANVAS_SIZE || b.y + b.h > CANVAS_SIZE) out.push(LAYER_LABELS[i]);
+  });
+  el.textContent = out.length ? `⚠ [${out.join(', ')}] 글이 이미지 밖으로 넘쳐 잘립니다. 크기·너비·위치를 조정해주세요.` : '';
+  el.style.display = out.length ? 'block' : 'none';
 }
 
 // ---------- pointer interaction ----------
@@ -489,12 +565,12 @@ function setupCanvasDrag(){
       if(snapY) ny = 0.5;
       layer.x = nx; layer.y = ny;
       state.guide = {x:snapX, y:snapY};
-      render();
+      requestRender();
     } else if(dragging.type==='bg'){
       state.bg.dx = dragging.startDx + delta.x;
       state.bg.dy = dragging.startDy + delta.y;
       clampBg();
-      render();
+      requestRender();
     }
   });
 
@@ -664,7 +740,7 @@ function buildLayerPanel(index){
   const commit = ()=>{ render(); scheduleAutosave(); };
 
   if(textarea) textarea.addEventListener('input', ()=>{ layer.text = textarea.value; commit(); });
-  fontSelect.addEventListener('change', ()=>{ layer.fontFamily = fontSelect.value; commit(); });
+  fontSelect.addEventListener('change', ()=>{ layer.fontFamily = fontSelect.value; commit(); ensureLayerFonts(); });
   fontSize.addEventListener('input', ()=>{ layer.fontSize = Number(fontSize.value)||layer.fontSize; commit(); });
   color.addEventListener('input', ()=>{ layer.color = color.value; commit(); });
   lineHeight.addEventListener('input', ()=>{ layer.lineHeight = Number(lineHeight.value)||1.3; commit(); });
@@ -736,12 +812,16 @@ function buildCopyTextPanel(label, storageKey, defaultText){
   try{ saved = localStorage.getItem(storageKey); }catch(e){}
   textarea.value = saved !== null ? saved : (defaultText || '');
 
-  textarea.addEventListener('input', ()=>{
-    try{ localStorage.setItem(storageKey, textarea.value); }catch(e){}
-  });
+  const persist = ()=>{ try{ localStorage.setItem(storageKey, textarea.value); }catch(e){} };
+  textarea.addEventListener('input', ()=>{ persist(); updateCharCount(); scheduleAutosave(); });
 
   bindCopyButton(copyBtn, textarea);
   wrap._textarea = textarea;
+  wrap._applySynced = (value)=>{
+    if(typeof value !== 'string') return;
+    textarea.value = value;
+    persist();
+  };
   return wrap;
 }
 
@@ -750,10 +830,15 @@ function buildDateTextPanel(){
   const storageKey = 'ovt_copytext_date';
   const dayKey = 'ovt_copytext_date_day';
 
-  function todayText(){
+  function dateText(offsetDays){
     const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    return formatDate(d);
+  }
+  function formatDate(d){
     return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${WEEKDAYS_KO[d.getDay()]}\n📖하루에 말씀 한 절📖`;
   }
+  const todayText = ()=>dateText(0);
 
   const wrap = document.createElement('div');
   wrap.className = 'layer-card';
@@ -762,6 +847,11 @@ function buildDateTextPanel(){
       <strong>날짜</strong>
       <div style="display:flex;gap:6px;">
         <button class="small" data-act="today">오늘 날짜</button>
+        <button class="small" data-act="tomorrow">내일 날짜</button>
+        <span style="position:relative;display:inline-block;">
+          <button class="small" data-act="pick">📅 날짜 선택</button>
+          <input type="date" data-act="pickInput" aria-label="날짜 선택" style="position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;border:0;opacity:0;cursor:pointer;-webkit-appearance:none;appearance:none;font-size:16px;">
+        </span>
         <button class="small" data-act="copy">복사</button>
       </div>
     </div>
@@ -786,12 +876,47 @@ function buildDateTextPanel(){
       localStorage.setItem(dayKey, todayKey);
     }catch(e){}
   }
-  textarea.addEventListener('input', persist);
-  todayBtn.addEventListener('click', ()=>{ textarea.value = todayText(); persist(); });
+  // user edits also go to the server draft so another device sees them
+  const edited = ()=>{ persist(); updateCharCount(); scheduleAutosave(); };
+  textarea.addEventListener('input', edited);
+  todayBtn.addEventListener('click', ()=>{ textarea.value = todayText(); edited(); });
+  wrap.querySelector('[data-act=tomorrow]').addEventListener('click', ()=>{ textarea.value = dateText(1); edited(); });
+
+  // Browser's own calendar, opened at the date already in the box; picking a
+  // day rewrites the line with its weekday. The date input itself lies
+  // invisibly over the button, so the tap lands on it directly — iPad/iPhone
+  // Safari only opens its picker from a real tap on the input. Desktop
+  // Chrome opens it only from the calendar icon, hence showPicker() there.
+  const pickInput = wrap.querySelector('[data-act=pickInput]');
+  const preparePicker = ()=>{ pickInput.value = buildPostDate() || localDateString(new Date()); };
+  pickInput.addEventListener('pointerdown', preparePicker);
+  pickInput.addEventListener('click', ()=>{
+    preparePicker();
+    if(typeof pickInput.showPicker === 'function'){ try{ pickInput.showPicker(); }catch(e){} }
+  });
+  const applyPicked = ()=>{
+    const m = pickInput.value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!m) return;
+    const text = formatDate(new Date(Number(m[1]), Number(m[2])-1, Number(m[3])));
+    if(textarea.value === text) return;
+    textarea.value = text;
+    edited();
+  };
+  // Safari reports the pick as 'input', Chrome as 'change'
+  pickInput.addEventListener('change', applyPicked);
+  pickInput.addEventListener('input', applyPicked);
   persist();
 
   bindCopyButton(copyBtn, textarea);
   wrap._textarea = textarea;
+  wrap._day = todayKey;
+  // From a synced draft: like the local copy, only a value written today is
+  // kept, so yesterday's date never carries over into a new day.
+  wrap._applySynced = (value, day)=>{
+    if(day !== todayKey || typeof value !== 'string') return;
+    textarea.value = value;
+    persist();
+  };
   return wrap;
 }
 
@@ -824,6 +949,19 @@ function combinedText(){
   ].join('\n');
 }
 
+// Instagram cuts captions at 2,200 characters (emoji count as one each here,
+// which is close enough to how Instagram counts them).
+const IG_CAPTION_LIMIT = 2200;
+function captionLength(){ return Array.from(combinedText()).length; }
+
+function updateCharCount(){
+  const el = document.getElementById('charCount');
+  if(!el) return;
+  const n = captionLength();
+  el.textContent = `인스타그램 본문 ${n.toLocaleString()} / ${IG_CAPTION_LIMIT.toLocaleString()}자` + (n > IG_CAPTION_LIMIT ? ` — ${(n-IG_CAPTION_LIMIT).toLocaleString()}자 초과` : '');
+  el.classList.toggle('over', n > IG_CAPTION_LIMIT);
+}
+
 function buildCombinedCopyPanel(dateTextarea, hashtagTextarea){
   const wrap = document.createElement('div');
   wrap.className = 'layer-card';
@@ -831,6 +969,7 @@ function buildCombinedCopyPanel(dateTextarea, hashtagTextarea){
     <div class="head"><strong>전체 복사</strong></div>
     <button class="small primary" style="width:100%;" data-act="copyall">텍스트 복사</button>
     <div class="hint">날짜 - 말씀(출처) - 묵상글(본문) - 해시태그 순서로 합쳐서 클립보드에 복사합니다.</div>
+    <div class="hint" id="charCount"></div>
   `;
   const btn = wrap.querySelector('[data-act=copyall]');
   btn.addEventListener('click', async ()=>{
@@ -852,6 +991,8 @@ function buildAllPanels(){
   const hashtagPanel = buildCopyTextPanel('해시태그', 'ovt_copytext_2',
     '#겸목사말씀묵상 #하루에말씀한절 #oneverseaday #QT #묵상');
   hashtagTextareaEl = hashtagPanel._textarea;
+  datePanelEl = datePanel;
+  hashtagPanelEl = hashtagPanel;
   // display order: 날짜 / 말씀 / 묵상글 / 해시태그 / 타이틀·고정 / 전체 복사
   container.appendChild(datePanel);
   state.panels.forEach((panel, i)=>{
@@ -949,7 +1090,7 @@ function bindFilterRange(rangeId, labelId, field){
   document.getElementById(rangeId).addEventListener('input', e=>{
     state.bg[field] = Number(e.target.value);
     document.getElementById(labelId).textContent = state.bg[field]+'%';
-    render();
+    requestRender();
     scheduleAutosave();
   });
 }
@@ -1013,6 +1154,7 @@ function applyBibleData(json, statusText){
   sel.disabled = false;
   resetSelect('chapterSelect', '장 선택', true);
   resetSelect('verseSelect', '절 선택', true);
+  resetSelect('verseEndSelect', '끝 절 (선택)', true);
   document.getElementById('applyVerse').disabled = true;
 }
 
@@ -1036,6 +1178,7 @@ document.getElementById('bookSelect').addEventListener('change', e=>{
   const bookIdx = e.target.value;
   resetSelect('chapterSelect', '장 선택', bookIdx==='');
   resetSelect('verseSelect', '절 선택', true);
+  resetSelect('verseEndSelect', '끝 절 (선택)', true);
   document.getElementById('applyVerse').disabled = true;
   if(bookIdx==='' || !bibleState.data) return;
   const book = bibleState.data.books[Number(bookIdx)];
@@ -1053,6 +1196,7 @@ document.getElementById('chapterSelect').addEventListener('change', e=>{
   const bookIdx = document.getElementById('bookSelect').value;
   const ch = e.target.value;
   resetSelect('verseSelect', '절 선택', !ch);
+  resetSelect('verseEndSelect', '끝 절 (선택)', true);
   document.getElementById('applyVerse').disabled = true;
   if(!ch || bookIdx==='' || !bibleState.data) return;
   const book = bibleState.data.books[Number(bookIdx)];
@@ -1066,8 +1210,24 @@ document.getElementById('chapterSelect').addEventListener('change', e=>{
   vSel.disabled = false;
 });
 
+// The 끝 절 list offers only verses after the chosen start; leaving it
+// unset keeps the single-verse behaviour.
 document.getElementById('verseSelect').addEventListener('change', e=>{
-  document.getElementById('applyVerse').disabled = !e.target.value;
+  const start = e.target.value;
+  document.getElementById('applyVerse').disabled = !start;
+  resetSelect('verseEndSelect', '끝 절 (선택)', !start);
+  if(!start || !bibleState.data) return;
+  const book = bibleState.data.books[Number(document.getElementById('bookSelect').value)];
+  const ch = document.getElementById('chapterSelect').value;
+  const endSel = document.getElementById('verseEndSelect');
+  book.verses
+    .filter(v => String(v.chapter) === String(ch) && Number(v.verse) > Number(start))
+    .forEach(v=>{
+      const opt = document.createElement('option');
+      opt.value = v.verse; opt.textContent = v.verse+'절';
+      endSel.appendChild(opt);
+    });
+  endSel.disabled = endSel.options.length <= 1;
 });
 
 document.getElementById('applyVerse').addEventListener('click', ()=>{
@@ -1077,9 +1237,12 @@ document.getElementById('applyVerse').addEventListener('click', ()=>{
   const v = document.getElementById('verseSelect').value;
   if(bookIdx==='' || !ch || !v) return;
   const book = bibleState.data.books[Number(bookIdx)];
-  const verseObj = book.verses.find(x => String(x.chapter)===String(ch) && String(x.verse)===String(v));
-  if(!verseObj) return;
-  state.layers[0].text = `[ ${book.name} ${ch}:${v} ]\n${verseObj.text}`;
+  const end = document.getElementById('verseEndSelect').value;
+  const from = Number(v), to = end ? Number(end) : from;
+  const picked = book.verses.filter(x => String(x.chapter)===String(ch) && Number(x.verse) >= from && Number(x.verse) <= to);
+  if(!picked.length) return;
+  const ref = to > from ? `${ch}:${from}-${to}` : `${ch}:${v}`;
+  state.layers[0].text = `[ ${book.name} ${ref} ]\n${picked.map(x => x.text).join(' ')}`;
   if(state.panels[0] && state.panels[0]._refresh) state.panels[0]._refresh();
   render();
   scheduleAutosave();
@@ -1196,10 +1359,34 @@ function buildWpTitle(){
 // verse is for), not the moment the "저장" button happened to be pressed —
 // a post prepared the night before for tomorrow should still show tomorrow's
 // date once published.
+// Returns null when the line can't be read or isn't a real calendar date —
+// sending no date would make the server publish immediately instead of
+// scheduling, so the caller has to stop on null.
 function buildPostDate(){
   const line = (dateTextareaEl ? dateTextareaEl.value.split('\n')[0] : '').trim();
-  const m = line.match(/(\d{4})\/(\d{2})\/(\d{2})/);
-  return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
+  const m = line.match(/(\d{4})\s*[\/.\-]\s*(\d{1,2})\s*[\/.\-]\s*(\d{1,2})/);
+  if(!m) return null;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  const check = new Date(y, mo-1, d);
+  if(check.getFullYear()!==y || check.getMonth()!==mo-1 || check.getDate()!==d) return null;
+  return `${y}-${pad(mo)}-${pad(d)}`;
+}
+
+function localDateString(d){
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Second click within the window confirms the warnings shown on the first.
+const publishConfirm = { armedFor: null, timer: null };
+
+function disarmPublishConfirm(btn){
+  clearTimeout(publishConfirm.timer);
+  publishConfirm.armedFor = null;
+  btn.textContent = '워드프레스에 저장';
 }
 
 function captureExportImages(){
@@ -1239,6 +1426,53 @@ async function publishToWordPress(){
     return;
   }
 
+  const post_date = buildPostDate();
+  if(!post_date){
+    disarmPublishConfirm(btn);
+    status.innerHTML = '<span class="warn" style="display:block;">날짜 칸 첫 줄의 날짜를 읽을 수 없어요. 예: 2026/10/01 목요일<br>(오늘·내일 날짜 버튼을 눌러도 됩니다.)</span>';
+    return;
+  }
+
+  const confirmed = publishConfirm.armedFor === post_date;
+  let duplicate = null;
+
+  if(!confirmed){
+    btn.disabled = true;
+    btn.textContent = '확인 중...';
+    status.textContent = '';
+    const warnings = [];
+    const len = captionLength();
+    if(len > IG_CAPTION_LIMIT){
+      warnings.push(`본문이 ${len.toLocaleString()}자로 인스타그램 제한(${IG_CAPTION_LIMIT.toLocaleString()}자)을 넘어서 <b>인스타그램 게시가 실패</b>할 수 있어요.`);
+    }
+    if(post_date < localDateString(new Date())){
+      warnings.push(`날짜가 이미 지난 날(${post_date})이라 예약되지 않고 <b>바로 게시</b>됩니다.`);
+    }
+    try{
+      const res = await fetch(OVT_WP_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, post_date, check_only: true })
+      });
+      const data = await res.json().catch(()=>({}));
+      duplicate = (res.ok && data.ok) ? data.duplicate : null;
+    }catch(e){ /* the publish request itself re-checks on the server */ }
+    if(duplicate){
+      warnings.push(`이 날짜(${post_date})에 이미 ${duplicate.status === 'future' ? '예약된' : '게시된'} 글이 있어요: <a href="${escapeHtml(duplicate.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(duplicate.title)}</a><br>또 게시하면 블로그·페이스북·인스타그램에 <b>한 번 더</b> 올라갑니다.`);
+    }
+    btn.disabled = false;
+    if(warnings.length){
+      status.innerHTML = '<span class="warn" style="display:block;">' + warnings.join('<br><br>') + '<br><br>그래도 게시하려면 8초 안에 버튼을 한 번 더 누르세요.</span>';
+      btn.textContent = '그래도 게시 (다시 클릭)';
+      publishConfirm.armedFor = post_date;
+      clearTimeout(publishConfirm.timer);
+      publishConfirm.timer = setTimeout(()=>disarmPublishConfirm(btn), 8000);
+      return;
+    }
+    btn.textContent = '워드프레스에 저장';
+  }
+  disarmPublishConfirm(btn);
+
   const { image1, image2 } = captureExportImages();
   const original = btn.textContent;
   btn.disabled = true;
@@ -1250,15 +1484,19 @@ async function publishToWordPress(){
     const image2_upload = await uploadImageInChunks(image2);
 
     btn.textContent = '게시 중...';
-    const post_date = buildPostDate();
     const res = await fetch(OVT_WP_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, content, image1_upload, image2_upload, post_date })
+      body: JSON.stringify({ title, content, image1_upload, image2_upload, post_date, force: confirmed })
     });
     const data = await res.json().catch(()=>({}));
     if(res.ok && data.ok){
-      status.innerHTML = '게시 완료: <a href="'+data.link+'" target="_blank" rel="noopener noreferrer">'+data.link+'</a>';
+      const scheduled = data.social && data.social.scheduled_for;
+      status.innerHTML = (scheduled ? `${post_date} 오전 7시 예약 완료 (블로그·페이스북·인스타그램): ` : '게시 완료: ')
+        + '<a href="'+escapeHtml(data.link)+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(data.link)+'</a>';
+      loadRecentStatus();
+    } else if(data.code === 'ovt_duplicate'){
+      status.textContent = '게시 안 함: 이 날짜에 이미 글이 있어요. 버튼을 다시 눌러 확인해주세요.';
     } else {
       status.textContent = '게시 실패: ' + (data.message || res.status);
     }
@@ -1271,6 +1509,38 @@ async function publishToWordPress(){
 }
 
 document.getElementById('wpPublishBtn').addEventListener('click', publishToWordPress);
+
+// ---------- recent post status ----------
+// Shows the last three verse posts and whether Facebook and Instagram took
+// them, so a failed morning post is visible right here.
+
+const OVT_RECENT_ENDPOINT = '/ovt/api.php?route=recent-status';
+
+function socialBadge(label, r, scheduled){
+  if(scheduled) return `<span class="wait">${label} 예약</span>`;
+  if(!r) return `<span class="wait" title="아직 결과가 기록되지 않았어요">${label} ?</span>`;
+  return r.ok
+    ? `<span class="ok">${label} ✓</span>`
+    : `<span class="bad" title="${escapeHtml(r.error || '')}">${label} ✗</span>`;
+}
+
+async function loadRecentStatus(){
+  const list = document.getElementById('recentList');
+  try{
+    const res = await fetch(OVT_RECENT_ENDPOINT, { cache: 'no-store' });
+    const data = await res.json();
+    if(!res.ok || !data.ok) throw new Error();
+    if(!data.posts.length){ list.textContent = '게시된 글이 없어요.'; return; }
+    list.innerHTML = data.posts.map(p=>{
+      const future = p.status === 'future';
+      const when = future ? `<span class="wait">${escapeHtml(p.date)} 예약</span>` : `<span class="ok">블로그 ✓</span>`;
+      return `<div class="item"><a href="${escapeHtml(p.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(p.title)}</a><br>`
+        + `${when} · ${socialBadge('페이스북', p.facebook, future)} · ${socialBadge('인스타그램', p.instagram, future)}</div>`;
+    }).join('');
+  }catch(e){
+    list.textContent = '상태를 불러오지 못했어요.';
+  }
+}
 
 // ---------- reset ----------
 // Two-click in-page confirmation instead of window.confirm(), so the warning
@@ -1328,6 +1598,123 @@ document.getElementById('closeSizeModal').addEventListener('click', closeSizeMod
 sizeModal.addEventListener('click', e=>{ if(e.target === sizeModal) closeSizeModal(); });
 document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && sizeModal.classList.contains('open')) closeSizeModal(); });
 
+// ---------- style presets ----------
+// Saved separately from the draft (own server slot + localStorage), so
+// 전체 초기화 doesn't erase them and every device shares the same list.
+
+const PRESET_LOCAL_KEY = 'ovt_presets';
+const PRESET_LAYER_FIELDS = ['fontFamily','fontSize','color','align','bold','italic','lineHeight','x','y','maxWidth',
+  'shadowEnabled','shadowColor','shadowBlur','shadowMultiply','strokeEnabled','strokeColor','strokeWidth','multiply'];
+const PRESET_BG_FIELDS = ['brightness','contrast','saturation','overlay'];
+let presets = [];
+let presetsInitialized = false;
+
+function pick(obj, fields){ const o = {}; fields.forEach(f => { if(obj[f] !== undefined) o[f] = obj[f]; }); return o; }
+
+function parsePresets(raw){
+  try{ const v = JSON.parse(raw); return Array.isArray(v) ? v.filter(p => p && p.name && Array.isArray(p.layers)) : null; }catch(e){ return null; }
+}
+
+function storePresets(){
+  const raw = JSON.stringify(presets);
+  try{ localStorage.setItem(PRESET_LOCAL_KEY, raw); }catch(e){}
+  fetch(OVT_STATE_SAVE_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slot: 'presets', state: raw })
+  }).catch(()=>{});
+}
+
+// Server list wins; a list only this browser has (e.g. saved while offline)
+// is uploaded so other devices get it too.
+function initPresets(serverRaw){
+  if(presetsInitialized) return;
+  presetsInitialized = true;
+  const server = serverRaw ? parsePresets(serverRaw) : null;
+  let local = null;
+  try{ local = parsePresets(localStorage.getItem(PRESET_LOCAL_KEY)); }catch(e){}
+  if(server){ presets = server; try{ localStorage.setItem(PRESET_LOCAL_KEY, serverRaw); }catch(e){} }
+  else if(local && local.length){ presets = local; storePresets(); }
+  refreshPresetSelect();
+}
+
+function refreshPresetSelect(selectName){
+  const sel = document.getElementById('presetSelect');
+  sel.innerHTML = presets.length ? '' : '<option value="">저장된 프리셋 없음</option>';
+  presets.forEach((p, i)=>{
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+  if(selectName){ const i = presets.findIndex(p => p.name === selectName); if(i >= 0) sel.value = i; }
+  document.getElementById('presetApply').disabled = !presets.length;
+  document.getElementById('presetDelete').disabled = !presets.length;
+}
+
+function presetMessage(text){
+  const el = document.getElementById('presetMsg');
+  el.textContent = text;
+  clearTimeout(presetMessage.timer);
+  presetMessage.timer = setTimeout(()=>{ el.textContent = ''; }, 2500);
+}
+
+(function setupPresets(){
+  const nameInput = document.getElementById('presetName');
+  const saveBtn = document.getElementById('presetSave');
+  const deleteBtn = document.getElementById('presetDelete');
+
+  saveBtn.addEventListener('click', ()=>{
+    const name = nameInput.value.trim();
+    if(!name){ presetMessage('프리셋 이름을 적어주세요.'); nameInput.focus(); return; }
+    const preset = {
+      name,
+      layers: [0, 1].map(i => pick(state.layers[i], PRESET_LAYER_FIELDS)),
+      bg: pick(state.bg, PRESET_BG_FIELDS)
+    };
+    const existing = presets.findIndex(p => p.name === name);
+    if(existing >= 0) presets[existing] = preset; else presets.push(preset);
+    storePresets();
+    refreshPresetSelect(name);
+    nameInput.value = '';
+    presetMessage(existing >= 0 ? `'${name}' 덮어씀` : `'${name}' 저장됨`);
+  });
+  nameInput.addEventListener('keydown', e=>{ if(e.key === 'Enter') saveBtn.click(); });
+
+  document.getElementById('presetApply').addEventListener('click', ()=>{
+    const p = presets[Number(document.getElementById('presetSelect').value)];
+    if(!p) return;
+    p.layers.forEach((style, i)=>{ if(state.layers[i]) Object.assign(state.layers[i], pick(style, PRESET_LAYER_FIELDS)); });
+    Object.assign(state.bg, pick(p.bg || {}, PRESET_BG_FIELDS));
+    state.panels.forEach(panel => { if(panel && panel._refresh) panel._refresh(); });
+    syncFilterInputs();
+    ensureLayerFonts();
+    render();
+    scheduleAutosave();
+    presetMessage(`'${p.name}' 적용됨 (↶로 되돌릴 수 있어요)`);
+  });
+
+  // two clicks, same as 전체 초기화
+  let confirmTimer = null;
+  deleteBtn.addEventListener('click', ()=>{
+    const idx = Number(document.getElementById('presetSelect').value);
+    const p = presets[idx];
+    if(!p) return;
+    if(!confirmTimer){
+      deleteBtn.textContent = '정말 삭제? (다시 클릭)';
+      confirmTimer = setTimeout(()=>{ confirmTimer = null; deleteBtn.textContent = '삭제'; }, 3000);
+      return;
+    }
+    clearTimeout(confirmTimer); confirmTimer = null;
+    deleteBtn.textContent = '삭제';
+    presets.splice(idx, 1);
+    storePresets();
+    refreshPresetSelect();
+    presetMessage(`'${p.name}' 삭제됨`);
+  });
+
+  refreshPresetSelect();
+})();
+
 // ---------- autosave ----------
 
 function stripLayer(l){
@@ -1344,7 +1731,12 @@ function buildSaveData(){
   return {
     ts: Date.now(),
     bg: { dataURL: state.bg.dataURL, zoom: state.bg.zoom, dx: state.bg.dx, dy: state.bg.dy, brightness: state.bg.brightness, contrast: state.bg.contrast, saturation: state.bg.saturation, overlay: state.bg.overlay },
-    layers: state.layers.map(stripLayer)
+    layers: state.layers.map(stripLayer),
+    copy: {
+      date: dateTextareaEl ? dateTextareaEl.value : null,
+      dateDay: datePanelEl ? datePanelEl._day : null,
+      hashtag: hashtagTextareaEl ? hashtagTextareaEl.value : null
+    }
   };
 }
 
@@ -1385,7 +1777,93 @@ async function pushStateToServer(data){
   }
 }
 
+// ---------- undo / redo ----------
+// A snapshot is taken at each autosave (i.e. after a short pause in
+// editing), so one step undoes one burst of changes. Typing inside a text
+// box keeps the browser's own Ctrl+Z; the buttons undo text changes too.
+
+const HISTORY_MAX = 50;
+const editHistory = { stack: [], index: -1 };
+
+function takeSnapshot(){
+  const b = state.bg;
+  return {
+    layers: state.layers.map(stripLayer),
+    bg: { img:b.img, dataURL:b.dataURL, natW:b.natW, natH:b.natH, zoom:b.zoom, dx:b.dx, dy:b.dy, brightness:b.brightness, contrast:b.contrast, saturation:b.saturation, overlay:b.overlay }
+  };
+}
+
+function snapshotKey(s){
+  const { img, dataURL, ...bgRest } = s.bg;
+  return JSON.stringify({ layers: s.layers, bg: bgRest });
+}
+
+function sameSnapshot(a, b){
+  return a && b && a.bg.dataURL === b.bg.dataURL && snapshotKey(a) === snapshotKey(b);
+}
+
+function recordHistory(){
+  const snap = takeSnapshot();
+  if(sameSnapshot(snap, editHistory.stack[editHistory.index])) return;
+  editHistory.stack.splice(editHistory.index + 1);
+  editHistory.stack.push(snap);
+  if(editHistory.stack.length > HISTORY_MAX) editHistory.stack.shift();
+  editHistory.index = editHistory.stack.length - 1;
+  updateHistoryButtons();
+}
+
+function resetHistory(){
+  editHistory.stack = [takeSnapshot()];
+  editHistory.index = 0;
+  updateHistoryButtons();
+}
+
+function updateHistoryButtons(){
+  const u = document.getElementById('undoBtn'), r = document.getElementById('redoBtn');
+  if(u) u.disabled = editHistory.index <= 0;
+  if(r) r.disabled = editHistory.index >= editHistory.stack.length - 1;
+}
+
+function restoreSnapshot(s){
+  s.layers.forEach((saved, i)=>{ if(state.layers[i]) Object.assign(state.layers[i], saved); });
+  enforceFixedLayerLock();
+  state.bg = { ...s.bg };
+  state.panels.forEach(p => { if(p && p._refresh) p._refresh(); });
+  document.getElementById('zoomRange').value = state.bg.zoom;
+  document.getElementById('zoomLabel').textContent = Math.round(state.bg.zoom*100)+'%';
+  syncFilterInputs();
+  ensureLayerFonts();
+  render();
+  clearTimeout(autosaveTimer);
+  saveState(); // matches the restored snapshot, so it records nothing new
+}
+
+function stepHistory(dir){
+  // flush a pending edit first so it can itself be undone
+  if(autosaveTimer){ clearTimeout(autosaveTimer); autosaveTimer = null; saveState(); }
+  const next = editHistory.index + dir;
+  if(next < 0 || next >= editHistory.stack.length) return;
+  editHistory.index = next;
+  restoreSnapshot(editHistory.stack[next]);
+  updateHistoryButtons();
+}
+
+function setupHistoryControls(){
+  document.getElementById('undoBtn').addEventListener('click', ()=>stepHistory(-1));
+  document.getElementById('redoBtn').addEventListener('click', ()=>stepHistory(1));
+  document.addEventListener('keydown', e=>{
+    if(!(e.ctrlKey || e.metaKey)) return;
+    const t = e.target;
+    if(t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.isContentEditable)) return;
+    const k = e.key.toLowerCase();
+    if(k === 'z' && !e.shiftKey){ e.preventDefault(); stepHistory(-1); }
+    else if(k === 'y' || (k === 'z' && e.shiftKey)){ e.preventDefault(); stepHistory(1); }
+  });
+}
+
 function saveState(){
+  autosaveTimer = null;
+  recordHistory();
   const data = buildSaveData();
   try{
     localStorage.setItem('ovt_state_v2', JSON.stringify(data));
@@ -1418,6 +1896,11 @@ function applyLoadedState(data, sourceLabel){
   }
   enforceFixedLayerLock();
   state.panels.forEach(p => { if(p && p._refresh) p._refresh(); });
+  if(data.copy){
+    if(datePanelEl) datePanelEl._applySynced(data.copy.date, data.copy.dateDay);
+    if(hashtagPanelEl) hashtagPanelEl._applySynced(data.copy.hashtag);
+  }
+  ensureLayerFonts();
 
   if(data.bg && data.bg.dataURL){
     const img = new Image();
@@ -1438,12 +1921,14 @@ function applyLoadedState(data, sourceLabel){
         document.getElementById('zoomLabel').textContent = Math.round(state.bg.zoom*100)+'%';
         syncFilterInputs();
         render();
+        resetHistory();
         if(finalDataURL !== data.bg.dataURL) scheduleAutosave();
       });
     };
     img.src = data.bg.dataURL;
   } else {
     render();
+    resetHistory();
   }
   document.getElementById('saveIndicator').textContent = sourceLabel || '이전 작업 내용을 불러왔어요';
 }
@@ -1460,6 +1945,7 @@ async function loadState(){
     const res = await fetch(OVT_STATE_LOAD_ENDPOINT);
     if(res.ok){
       const json = await res.json();
+      if(json && json.ok) initPresets(json.presets);
       if(json && json.ok && json.state){
         serverData = JSON.parse(json.state);
         serverBgSlot = json.bg || null;
@@ -1469,6 +1955,7 @@ async function loadState(){
       }
     }
   }catch(e){}
+  initPresets(null); // server unreachable: fall back to this browser's list
 
   let data = null, fromServer = false;
   if(serverData && localData){
@@ -1478,7 +1965,7 @@ async function loadState(){
     fromServer = !!serverData;
     data = serverData || localData;
   }
-  if(!data){ render(); return; }
+  if(!data){ render(); resetHistory(); return; }
 
   // A background is never dropped just because the copy we loaded lacks one:
   // an interrupted sync could otherwise wipe a photo this browser still holds.
@@ -1500,6 +1987,25 @@ async function loadState(){
   }
 }
 
+// ---------- fonts ----------
+// The Google Fonts stylesheet loads without blocking the first paint. Font
+// files themselves are only fetched for the families the layers actually
+// use (or that the font dropdown shows), and the canvas redraws once each
+// arrives.
+
+let fontsCssReady = false;
+
+function ensureLayerFonts(){
+  if(!fontsCssReady || !document.fonts || !document.fonts.load) return;
+  const loads = state.layers.map(l =>
+    document.fonts.load(`${l.italic?'italic ':''}${l.bold?'700':'400'} ${l.fontSize}px "${l.fontFamily}"`, l.text || '가'));
+  Promise.all(loads).then(render, render);
+}
+
+window.ovtFontsCssReady = ()=>{ fontsCssReady = true; ensureLayerFonts(); };
+// the stylesheet may already have finished before this script ran
+if([...document.styleSheets].some(s => (s.href||'').includes('fonts.googleapis.com'))) window.ovtFontsCssReady();
+
 // ---------- init ----------
 
 buildAllPanels();
@@ -1509,8 +2015,11 @@ if(document.fonts){
   document.fonts.addEventListener('loadingdone', render);
   document.fonts.ready.then(render);
 }
+setupHistoryControls();
 loadState();
 loadFixedBibleData();
+loadRecentStatus();
+document.getElementById('recentRefresh').addEventListener('click', loadRecentStatus);
 </script>
 </body>
 </html>
