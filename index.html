@@ -45,6 +45,9 @@
   canvas{width:100%;height:100%;display:block;touch-action:none;cursor:grab;}
   canvas.dragging{cursor:grabbing;}
   .canvas-col .col-actions{display:flex;gap:8px;margin-top:10px;}
+  /* the four labelled buttons share the canvas width; the icon buttons stay narrow */
+  .canvas-col .col-actions > *{flex:1 1 0;min-width:0;padding-left:4px;padding-right:4px;text-align:center;display:flex;align-items:center;justify-content:center;}
+  .canvas-col .col-actions > .icon{flex:0 0 36px;}
   .panels-col{flex:1 1 360px;min-width:300px;}
 
   .layer-card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:12px;}
@@ -162,13 +165,13 @@
       <div class="canvas-wrap"><canvas id="canvas" width="1080" height="1080"></canvas></div>
       <div id="overflowWarn" class="warn" style="display:none;"></div>
       <div class="col-actions">
-        <button class="primary" id="exportBtn">이미지 내보내기</button>
-        <button class="primary" id="wpPublishBtn">워드프레스에 저장</button>
-        <button class="danger" id="resetAll">전체 초기화</button>
-        <button id="actualSizeBtn">실제 사이즈</button>
-        <button id="undoBtn" title="되돌리기 (Ctrl+Z)" disabled>↶</button>
-        <button id="redoBtn" title="다시 실행 (Ctrl+Y)" disabled>↷</button>
-        <a class="btn" href="https://byraju.mycafe24.com/wp" target="_blank" rel="noopener noreferrer" title="워드프레스 바로가기">↗</a>
+        <button class="primary" id="exportBtn">이미지<br>내보내기</button>
+        <button class="primary" id="wpPublishBtn">이미지<br>발행하기</button>
+        <button class="danger" id="resetAll">전체<br>초기화</button>
+        <button id="actualSizeBtn">실제<br>사이즈</button>
+        <button id="undoBtn" class="icon" title="되돌리기 (Ctrl+Z)" disabled>↶</button>
+        <button id="redoBtn" class="icon" title="다시 실행 (Ctrl+Y)" disabled>↷</button>
+        <a class="btn icon" href="https://byraju.mycafe24.com/wp" target="_blank" rel="noopener noreferrer" title="워드프레스 바로가기">↗</a>
       </div>
       <div id="wpStatus" class="hint"></div>
       <div id="recentStatus" class="recent">
@@ -1386,7 +1389,7 @@ const publishConfirm = { armedFor: null, timer: null };
 function disarmPublishConfirm(btn){
   clearTimeout(publishConfirm.timer);
   publishConfirm.armedFor = null;
-  btn.textContent = '워드프레스에 저장';
+  btn.innerHTML = '이미지<br>발행하기';
 }
 
 function captureExportImages(){
@@ -1469,12 +1472,12 @@ async function publishToWordPress(){
       publishConfirm.timer = setTimeout(()=>disarmPublishConfirm(btn), 8000);
       return;
     }
-    btn.textContent = '워드프레스에 저장';
+    btn.innerHTML = '이미지<br>발행하기';
   }
   disarmPublishConfirm(btn);
 
   const { image1, image2 } = captureExportImages();
-  const original = btn.textContent;
+  const original = btn.innerHTML;
   btn.disabled = true;
   btn.textContent = '이미지 업로드 중...';
   status.textContent = '';
@@ -1504,7 +1507,7 @@ async function publishToWordPress(){
     status.textContent = '게시 실패: 네트워크 오류';
   } finally {
     btn.disabled = false;
-    btn.textContent = original;
+    btn.innerHTML = original;
   }
 }
 
@@ -1548,7 +1551,7 @@ async function loadRecentStatus(){
 
 (function setupResetAll(){
   const btn = document.getElementById('resetAll');
-  const originalLabel = btn.textContent;
+  const originalLabel = btn.innerHTML;
   let confirming = false;
   let confirmTimer = null;
 
@@ -1558,7 +1561,7 @@ async function loadRecentStatus(){
       btn.textContent = '정말 초기화? (다시 클릭)';
       confirmTimer = setTimeout(()=>{
         confirming = false;
-        btn.textContent = originalLabel;
+        btn.innerHTML = originalLabel;
       }, 3000);
       return;
     }
