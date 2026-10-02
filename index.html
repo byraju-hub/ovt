@@ -53,16 +53,44 @@
   .layer-card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:12px;}
   .layer-card .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
   .layer-card .head strong{font-size:12.5px;}
+  .head-title{display:flex;align-items:baseline;gap:8px;min-width:0;}
+  .char-count{font-size:10.5px;color:var(--sub);font-weight:400;white-space:nowrap;}
   .fixed-note{background:var(--bg);border:1px dashed var(--line);border-radius:6px;padding:8px;color:var(--sub);font-size:12.5px;margin-bottom:8px;}
   textarea{width:100%;resize:vertical;min-height:44px;background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:13px;}
   input[type=text]{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px 8px;font-family:inherit;font-size:12px;width:140px;}
-  .recent{margin-top:10px;font-size:12px;color:var(--sub);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
+  .recent{margin-top:10px;margin-bottom:12px;font-size:12px;color:var(--sub);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;}
   .recent .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
   .recent .item{padding:3px 0;line-height:1.5;}
   .recent a{color:var(--text);text-decoration:none;}
   .recent a:hover{text-decoration:underline;}
   .recent .ok{color:#7bd88f;} .recent .bad{color:#ff8fa3;} .recent .wait{color:#f2c86b;}
   .over{color:#ff8fa3 !important;}
+
+  .qt-inner{width:min(900px,95vw);}
+  .qt-body{display:flex;flex-wrap:wrap;gap:18px;padding:16px;overflow:auto;}
+  .qt-cal{flex:0 0 392px;max-width:100%;}
+  .qt-tabs{display:flex;gap:6px;margin-bottom:10px;}
+  .qt-tabs button.toggle-on{font-weight:600;}
+  .qt-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .qt-grid .dow{text-align:center;font-size:11px;color:var(--sub);padding:2px 0;}
+  .qt-grid .dow.sun{color:#ff8fa3;}
+  .qt-grid .blank{min-height:58px;}
+  .qt-day{min-height:58px;padding:4px 2px;display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.25;text-align:center;border-radius:6px;}
+  .qt-day b{font-size:13px;}
+  .qt-day small{font-size:9.5px;color:var(--sub);word-break:keep-all;}
+  .qt-day.none{opacity:.35;cursor:default;}
+  .qt-day.today{border-color:var(--accent2);}
+  .qt-day.sel{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .qt-day.sel small{color:#e3ebff;}
+  .qt-passage{flex:1 1 300px;min-width:280px;}
+  .qt-head{font-size:14px;font-weight:600;margin-bottom:2px;}
+  .qt-title{font-size:12px;color:var(--sub);margin-bottom:8px;}
+  .qt-mode{display:block;font-size:12px;color:var(--sub);margin:6px 0 8px;}
+  .qt-verses{display:flex;flex-direction:column;gap:4px;max-height:56vh;overflow:auto;padding-right:2px;}
+  .qt-verses .ch{font-size:11.5px;color:var(--sub);padding:6px 2px 0;}
+  .qt-verse{display:flex;gap:8px;text-align:left;font-size:13px;font-weight:400;line-height:1.55;padding:6px 8px;width:100%;}
+  .qt-verse .n{flex:0 0 auto;min-width:22px;color:var(--accent);font-weight:600;}
+  .qt-verse.start{border-color:var(--accent2);background:rgba(255,91,122,.14);}
   select, input[type=number], input[type=color]{background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:6px;padding:5px 6px;font-family:inherit;font-size:12px;}
   select{max-width:150px;}
   input[type=number]{width:56px;}
@@ -74,6 +102,8 @@
   .hint{color:var(--sub);font-size:11.5px;margin-top:8px;}
   .warn{color:#ffb4c1;background:rgba(255,91,122,.12);border:1px solid var(--accent2);border-radius:6px;padding:6px 8px;font-size:12px;margin-top:8px;}
   .warn a{color:#ffd6de;}
+  #qtUpdateMsg{font-size:12px;color:var(--sub);line-height:1.5;}
+  #qtUpdateMsg.warn{margin-top:0;color:#ffb4c1;}
 
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;z-index:1000;padding:24px;}
   .modal-overlay.open{display:flex;}
@@ -97,6 +127,9 @@
     <h2>성경 구절 불러오기</h2>
     <div class="row">
       <span id="bibleStatus" style="color:var(--sub);font-size:12px;">불러오는 중...</span>
+      <button id="qtCalendarBtn" class="small">📅 생명의 삶 달력</button>
+      <button id="qtUpdateBtn" class="small" title="두란노 게시판에 새 달 본문이 올라왔는지 확인해서 달력에 추가합니다">QT본문 추가</button>
+      <span id="qtUpdateMsg" style="display:none;"></span>
     </div>
     <div class="row">
       <select id="bookSelect"><option value="">권 선택</option></select>
@@ -147,18 +180,6 @@
     <div class="hint">캔버스를 드래그하면 배경 이미지를 이동할 수 있어요. 텍스트가 없는 빈 자리를 드래그하면 배경이, 텍스트 위를 드래그하면 그 텍스트 레이어가 움직입니다. 원본 비율은 항상 유지됩니다.</div>
   </section>
 
-  <section class="panel">
-    <h2>스타일 프리셋</h2>
-    <div class="row">
-      <select id="presetSelect"><option value="">저장된 프리셋 없음</option></select>
-      <button id="presetApply" class="small primary">적용</button>
-      <button id="presetDelete" class="small danger">삭제</button>
-      <input type="text" id="presetName" placeholder="새 프리셋 이름" maxlength="30">
-      <button id="presetSave" class="small">현재 스타일 저장</button>
-      <span id="presetMsg" style="color:var(--sub);font-size:12px;"></span>
-    </div>
-    <div class="hint">말씀·묵상글의 글꼴·크기·색·정렬·줄간격·너비·위치·그림자·외곽선과 배경 보정(밝기·대비·채도·오버레이)을 저장합니다. 글 내용과 사진은 바뀌지 않아요. 같은 이름으로 저장하면 덮어씁니다.</div>
-  </section>
 
   <div class="editor">
     <div class="canvas-col">
@@ -178,6 +199,20 @@
         <div class="head"><strong>최근 게시 상태</strong><button class="small" id="recentRefresh">새로고침</button></div>
         <div id="recentList">불러오는 중...</div>
       </div>
+      <section class="panel" id="presetPanel">
+        <h2>스타일 프리셋</h2>
+        <div class="row">
+          <select id="presetSelect"><option value="">저장된 프리셋 없음</option></select>
+          <button id="presetApply" class="small primary">적용</button>
+          <button id="presetDelete" class="small danger">삭제</button>
+        </div>
+        <div class="row">
+          <input type="text" id="presetName" placeholder="새 프리셋 이름" maxlength="30">
+          <button id="presetSave" class="small">현재 스타일 저장</button>
+        </div>
+        <div id="presetMsg" style="color:var(--sub);font-size:12px;min-height:16px;"></div>
+        <div class="hint">말씀·묵상글의 글꼴·크기·색·정렬·줄간격·너비·위치·그림자·외곽선과 배경 보정(밝기·대비·채도·오버레이)을 저장합니다. 글 내용과 사진은 바뀌지 않아요. 같은 이름으로 저장하면 덮어씁니다.</div>
+      </section>
     </div>
     <div class="panels-col" data-layers></div>
   </div>
@@ -193,6 +228,27 @@
     </div>
     <div class="modal-scroll">
       <img id="sizePreviewImg" width="1080" height="1080" alt="실제 사이즈 미리보기">
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="qtModal">
+  <div class="modal-inner qt-inner">
+    <div class="modal-header">
+      <span>생명의 삶 달력 — 날짜를 누르면 그날 본문이 나옵니다</span>
+      <button class="small" id="closeQtModal">닫기</button>
+    </div>
+    <div class="qt-body">
+      <div class="qt-cal">
+        <div class="qt-tabs" id="qtTabs"></div>
+        <div class="qt-grid" id="qtGrid"></div>
+      </div>
+      <div class="qt-passage">
+        <div class="qt-head" id="qtHead">날짜를 선택하세요</div>
+        <div class="qt-title" id="qtTitle"></div>
+        <div class="qt-mode" id="qtMode">절을 누르면 [말씀]에 그 절이 들어가고 날짜도 그날로 바뀌어요. 이어서 다른 절을 누르면 거기까지 범위로 바뀝니다.</div>
+        <div class="qt-verses" id="qtVerses"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -620,7 +676,7 @@ function buildLayerPanel(index){
   wrap.className = 'layer-card';
   wrap.innerHTML = `
     <div class="head">
-      <strong>${LAYER_LABELS[index] || ('레이어 '+(index+1))}</strong>
+      <div class="head-title"><strong>${LAYER_LABELS[index] || ('레이어 '+(index+1))}</strong><span class="char-count"></span></div>
       <div style="display:flex;gap:6px;">
         ${index===1 ? '<a class="small btn" href="https://nara-speller.co.kr/speller/" target="_blank" rel="noopener noreferrer" data-act="spellcheck">맞춤법 검사</a>' : ''}
         <button class="small" data-act="center">가운데로</button>
@@ -710,8 +766,17 @@ function buildLayerPanel(index){
     fontSelect.appendChild(opt);
   });
 
+  // characters in the box: line breaks aren't counted; 공백 제외 also drops spaces
+  const countEl = wrap.querySelector('.char-count');
+  function updateCount(){
+    const all = Array.from(layer.text.replace(/[\r\n]/g, '')).length;
+    const solid = Array.from(layer.text.replace(/\s/g, '')).length;
+    countEl.textContent = `${all.toLocaleString()}자 (공백 제외 ${solid.toLocaleString()}자)`;
+  }
+
   function refreshUI(){
     if(textarea) textarea.value = layer.text;
+    updateCount();
     fontSelect.value = layer.fontFamily;
     fontSize.value = layer.fontSize;
     color.value = layer.color;
@@ -742,7 +807,7 @@ function buildLayerPanel(index){
 
   const commit = ()=>{ render(); scheduleAutosave(); };
 
-  if(textarea) textarea.addEventListener('input', ()=>{ layer.text = textarea.value; commit(); });
+  if(textarea) textarea.addEventListener('input', ()=>{ layer.text = textarea.value; updateCount(); commit(); });
   fontSelect.addEventListener('change', ()=>{ layer.fontFamily = fontSelect.value; commit(); ensureLayerFonts(); });
   fontSize.addEventListener('input', ()=>{ layer.fontSize = Number(fontSize.value)||layer.fontSize; commit(); });
   color.addEventListener('input', ()=>{ layer.color = color.value; commit(); });
@@ -913,6 +978,13 @@ function buildDateTextPanel(){
   bindCopyButton(copyBtn, textarea);
   wrap._textarea = textarea;
   wrap._day = todayKey;
+  // used by the 생명의 삶 calendar: key is "YYYY-MM-DD"
+  wrap._setDate = (key)=>{
+    const m = String(key).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(!m) return;
+    textarea.value = formatDate(new Date(Number(m[1]), Number(m[2])-1, Number(m[3])));
+    edited();
+  };
   // From a synced draft: like the local copy, only a value written today is
   // kept, so yesterday's date never carries over into a new day.
   wrap._applySynced = (value, day)=>{
@@ -996,12 +1068,14 @@ function buildAllPanels(){
   hashtagTextareaEl = hashtagPanel._textarea;
   datePanelEl = datePanel;
   hashtagPanelEl = hashtagPanel;
-  // display order: 날짜 / 말씀 / 묵상글 / 해시태그 / 타이틀·고정 / 전체 복사
+  // right column: 날짜 / 말씀 / 묵상글 / 해시태그 / 전체 복사
+  // left column, under the 스타일 프리셋: 타이틀·고정
   container.appendChild(datePanel);
   state.panels.forEach((panel, i)=>{
-    if(i === FIXED_LAYER_INDEX) container.appendChild(hashtagPanel);
-    container.appendChild(panel);
+    if(i === FIXED_LAYER_INDEX) document.getElementById('presetPanel').after(panel);
+    else container.appendChild(panel);
   });
+  container.appendChild(hashtagPanel);
   container.appendChild(buildCombinedCopyPanel(datePanel._textarea, hashtagPanel._textarea));
 }
 
@@ -1250,6 +1324,215 @@ document.getElementById('applyVerse').addEventListener('click', ()=>{
   render();
   scheduleAutosave();
 });
+
+// ---------- 생명의 삶 calendar ----------
+// qt-2026.json maps a date to the day's passage ({book, range, ref, title?});
+// the verse text itself always comes from bible.json. Tapping a verse puts
+// that one verse into the 말씀 layer; tapping a second verse right after
+// stretches the selection into a range (the modal stays open for that).
+
+const QT_URL = 'qt-2026.json';
+const qt = { data: null, months: [], month: null, day: null, book: null, from: 0, to: -1, anchor: null };
+
+async function loadQtData(){
+  if(qt.data) return true;
+  try{
+    const res = await fetch(QT_URL, { cache: 'no-cache' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    qt.data = await res.json();
+    qt.months = [...new Set(Object.keys(qt.data).map(k => k.slice(0, 7)))].sort();
+    return true;
+  }catch(e){ return false; }
+}
+
+function qtBook(name){
+  return bibleState.data ? bibleState.data.books.find(b => b.name === name) : null;
+}
+
+// "17:16~27" or "21:18~22:1" → indexes of the first and last verse in book.verses.
+// Verse rows can span two numbers ("12-13"), so v1/v2 are compared, not `verse`.
+function qtRangeIndexes(book, range){
+  // forms: "17:16~27", "21:18~22:1", "23:1" (one verse), "1~3장" / "5장" (whole chapters)
+  const r = String(range);
+  let c1, v1, c2, v2, m;
+  if((m = r.match(/^(\d+)(?:~(\d+))?장$/))){
+    c1 = Number(m[1]); c2 = m[2] ? Number(m[2]) : c1; v1 = 0; v2 = Infinity;
+  } else if((m = r.match(/^(\d+):(\d+)(?:~(?:(\d+):)?(\d+))?$/))){
+    c1 = Number(m[1]); v1 = Number(m[2]);
+    c2 = m[3] ? Number(m[3]) : c1; v2 = m[4] ? Number(m[4]) : v1;
+  } else return null;
+  const vv = x => [x.v1 != null ? x.v1 : parseInt(x.verse, 10), x.v2 != null ? x.v2 : parseInt(x.verse, 10)];
+  let from = -1, to = -1;
+  book.verses.forEach((x, i)=>{
+    const [a, b] = vv(x), ch = Number(x.chapter);
+    if(from < 0 && ch === c1 && b >= v1) from = i;
+    if(ch === c2 && a <= v2) to = i;
+  });
+  return from >= 0 && to >= from ? { from, to } : null;
+}
+
+// Text for verses book.verses[i..j], in the same "[ 책 장:절 ]\n본문" layout
+// the dropdown loader produces.
+function qtSelectionText(book, i, j){
+  const picked = book.verses.slice(i, j + 1);
+  const first = picked[0], last = picked[picked.length - 1];
+  const lo = x => x.v1 != null ? x.v1 : parseInt(x.verse, 10);
+  const hi = x => x.v2 != null ? x.v2 : parseInt(x.verse, 10);
+  let ref;
+  if(picked.length === 1) ref = `${first.chapter}:${first.verse}`;
+  else if(String(first.chapter) === String(last.chapter)) ref = `${first.chapter}:${lo(first)}-${hi(last)}`;
+  else ref = `${first.chapter}:${lo(first)}-${last.chapter}:${hi(last)}`;
+  return `[ ${book.name} ${ref} ]\n${picked.map(x => x.text).join(' ')}`;
+}
+
+function qtInsert(i, j){
+  state.layers[0].text = qtSelectionText(qt.book, i, j);
+  // the 날짜 box follows the calendar day the passage was picked from
+  if(datePanelEl && qt.day) datePanelEl._setDate(qt.day);
+  if(state.panels[0] && state.panels[0]._refresh) state.panels[0]._refresh();
+  render();
+  scheduleAutosave();
+}
+
+function renderQtCalendar(){
+  const tabs = document.getElementById('qtTabs'), grid = document.getElementById('qtGrid');
+  tabs.innerHTML = '';
+  qt.months.forEach(mo=>{
+    const b = document.createElement('button');
+    b.textContent = Number(mo.slice(5)) + '월';
+    b.classList.toggle('toggle-on', mo === qt.month);
+    b.addEventListener('click', ()=>{ qt.month = mo; renderQtCalendar(); });
+    tabs.appendChild(b);
+  });
+
+  const [y, m] = qt.month.split('-').map(Number);
+  const todayKey = localDateString(new Date());
+  let html = ['일','월','화','수','목','금','토'].map((d, i)=>`<div class="dow${i===0?' sun':''}">${d}</div>`).join('');
+  html += '<div class="blank"></div>'.repeat(new Date(y, m - 1, 1).getDay());
+  for(let d = 1, last = new Date(y, m, 0).getDate(); d <= last; d++){
+    const key = `${qt.month}-${pad(d)}`, e = qt.data[key];
+    const cls = ['qt-day', e ? '' : 'none', key === todayKey ? 'today' : '', key === qt.day ? 'sel' : ''].join(' ');
+    if(!e){ html += `<button class="${cls}" disabled><b>${d}</b></button>`; continue; }
+    const book = qtBook(e.book);
+    html += `<button class="${cls}" data-day="${key}" title="${escapeHtml(e.ref)}"><b>${d}</b><small>${escapeHtml(book && book.short ? book.short : e.book)}<br>${escapeHtml(e.range)}</small></button>`;
+  }
+  grid.innerHTML = html;
+  grid.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', ()=> selectQtDay(b.dataset.day)));
+}
+
+function selectQtDay(key){
+  qt.day = key;
+  qt.anchor = null;
+  renderQtCalendar();
+  const e = qt.data[key];
+  const head = document.getElementById('qtHead'), title = document.getElementById('qtTitle'), list = document.getElementById('qtVerses');
+  head.textContent = `${key.replace(/-/g, '/')} · ${e.ref}`;
+  title.textContent = e.title || '';
+  qt.book = qtBook(e.book);
+  const idx = qt.book && qtRangeIndexes(qt.book, e.range);
+  if(!idx){ list.textContent = '이 본문을 성경 데이터에서 찾지 못했어요.'; qt.to = -1; return; }
+  qt.from = idx.from; qt.to = idx.to;
+  renderQtVerses();
+}
+
+function renderQtVerses(){
+  const list = document.getElementById('qtVerses');
+  list.innerHTML = '';
+  let prevChapter = null;
+  for(let i = qt.from; i <= qt.to; i++){
+    const v = qt.book.verses[i];
+    if(v.chapter !== prevChapter){
+      const h = document.createElement('div');
+      h.className = 'ch'; h.textContent = v.chapter + '장';
+      list.appendChild(h);
+      prevChapter = v.chapter;
+    }
+    const b = document.createElement('button');
+    b.className = 'qt-verse' + (i === qt.anchor ? ' start' : '');
+    b.innerHTML = `<span class="n">${escapeHtml(v.verse)}</span><span>${escapeHtml(v.text)}</span>`;
+    b.addEventListener('click', ()=> pickQtVerse(i));
+    list.appendChild(b);
+  }
+}
+
+// First tap: that verse alone goes in and becomes the range start.
+// Next tap on another verse: start..tapped goes in, and the pick is done.
+// (Tapping the start again puts the single verse back.)
+function pickQtVerse(i){
+  const mode = document.getElementById('qtMode');
+  if(qt.anchor === null){
+    qt.anchor = i;
+    qtInsert(i, i);
+    mode.textContent = '[말씀]에 넣고 날짜도 ' + qt.day.replace(/-/g, '/') + '로 바꿨어요. 범위로 하려면 끝 절을 이어서 눌러주세요. 이대로면 닫기를 누르세요.';
+  } else {
+    qtInsert(Math.min(qt.anchor, i), Math.max(qt.anchor, i));
+    qt.anchor = null;
+    mode.textContent = '범위로 [말씀]에 넣었어요 (날짜 ' + qt.day.replace(/-/g, '/') + '). 다른 절을 누르면 새로 시작합니다.';
+  }
+  renderQtVerses();
+}
+
+function closeQtModal(){ document.getElementById('qtModal').classList.remove('open'); }
+
+async function openQtModal(){
+  const modal = document.getElementById('qtModal');
+  modal.classList.add('open');
+  const head = document.getElementById('qtHead');
+  if(!bibleState.data){ head.textContent = '성경 데이터를 아직 불러오지 못했어요. 잠시 후 다시 열어주세요.'; return; }
+  if(!(await loadQtData())){ head.textContent = '달력 데이터(qt-2026.json)를 불러오지 못했어요.'; return; }
+  const todayKey = localDateString(new Date());
+  if(!qt.month || !qt.months.includes(qt.month)){
+    qt.month = qt.months.includes(todayKey.slice(0, 7)) ? todayKey.slice(0, 7) : qt.months[0];
+  }
+  renderQtCalendar();
+  if(qt.data[todayKey] && !qt.day) selectQtDay(todayKey);
+  else if(qt.day) selectQtDay(qt.day);
+}
+
+// "QT본문 추가": the server reads the Duranno notice board and adds any month
+// posted since the calendar's last one (qt-update.php; the browser can't read
+// that site itself). Nothing happens if there's no new notice.
+const QT_UPDATE_ENDPOINT = '/ovt/qt-update.php';
+
+async function updateQtPassages(){
+  const btn = document.getElementById('qtUpdateBtn'), msg = document.getElementById('qtUpdateMsg');
+  const show = (html, bad)=>{ msg.style.display = 'inline-block'; msg.innerHTML = html; msg.classList.toggle('warn', !!bad); };
+  const label = ym => `${ym.slice(0, 4)}년 ${Number(ym.slice(5))}월`;
+  btn.disabled = true;
+  btn.textContent = '확인 중...';
+  show('두란노 게시판을 확인하는 중이에요...');
+  try{
+    const res = await fetch(QT_UPDATE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-OVT-Request': '1' },
+      body: '{}'
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok){ show(escapeHtml(data.message || `확인하지 못했어요 (${res.status})`), true); return; }
+
+    const lines = [];
+    if(data.added.length){
+      lines.push(`✓ 달력에 추가했어요: ${data.added.map(a => `${label(a.month)} ${a.days}일치`).join(', ')}`);
+      qt.data = null; qt.month = null; qt.day = null; // re-read the file next time the calendar opens
+      if(document.getElementById('qtModal').classList.contains('open')) openQtModal();
+    } else if(!data.errors.length){
+      lines.push(`새로 올라온 본문 공지가 없어요. (달력은 ${data.last_month ? label(data.last_month) : '-'}까지)`);
+    }
+    data.errors.forEach(e => lines.push(`⚠ ${label(e.month)} 공지는 추가하지 못했어요: ${escapeHtml(e.reason)}<br>공지 형식이 바뀐 것 같아요. 이 화면을 Claude에게 알려주세요.`));
+    show(lines.join('<br>'), data.errors.length > 0);
+  }catch(e){
+    show('확인하지 못했어요 (네트워크 오류)', true);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'QT본문 추가';
+  }
+}
+
+document.getElementById('qtUpdateBtn').addEventListener('click', updateQtPassages);
+document.getElementById('qtCalendarBtn').addEventListener('click', openQtModal);
+document.getElementById('closeQtModal').addEventListener('click', closeQtModal);
+document.getElementById('qtModal').addEventListener('click', e=>{ if(e.target.id === 'qtModal') closeQtModal(); });
+document.addEventListener('keydown', e=>{ if(e.key === 'Escape') closeQtModal(); });
 
 // ---------- export ----------
 
