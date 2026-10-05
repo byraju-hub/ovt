@@ -1810,21 +1810,79 @@ function socialBadge(label, r, scheduled){
     : `<span class="bad" title="${escapeHtml(r.error || '')}">${label} ✗</span>`;
 }
 
-async function loadRecentStatus(){
+// A post that is already out but has a ✗ or a missing result on Facebook or
+// Instagram gets a 다시 시도 button. The server redoes only the platform(s)
+// that failed (so nothing is posted twice) in the background; this page then
+// checks back every few seconds until the server reports it has finished.
+
+const OVT_RETRY_ENDPOINT = '/ovt/api.php?route=social-retry';
+let recentPosts = [];
+const retrying = new Set();   // post ids whose retry was started from this page
+const retryNote = {};         // post id -> last outcome message
+
+const socialOk = r => !!(r && r.ok);
+
+function renderRecentList(){
   const list = document.getElementById('recentList');
+  if(!recentPosts.length){ list.textContent = '게시된 글이 없어요.'; return; }
+  list.innerHTML = recentPosts.map(p=>{
+    const future = p.status === 'future';
+    const failed = !future && !p.pending && !(socialOk(p.facebook) && socialOk(p.instagram));
+    const when = future ? `<span class="wait">${escapeHtml(p.date)} 예약</span>` : `<span class="ok">블로그 ✓</span>`;
+    let action = '';
+    if(retrying.has(p.id) || p.busy) action = ' · <span class="wait">진행 중… (최대 몇 분)</span>';
+    else if(failed) action = ` · <button class="small" data-retry="${p.id}">다시 시도</button>`;
+    const note = retryNote[p.id] ? `<br><span class="wait">${escapeHtml(retryNote[p.id])}</span>` : '';
+    return `<div class="item"><a href="${escapeHtml(p.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(p.title)}</a><br>`
+      + `${when} · ${socialBadge('페이스북', p.facebook, future)} · ${socialBadge('인스타그램', p.instagram, future)}${action}${note}</div>`;
+  }).join('');
+  list.querySelectorAll('[data-retry]').forEach(b => b.addEventListener('click', ()=> retrySocial(Number(b.dataset.retry))));
+}
+
+async function loadRecentStatus(){
   try{
     const res = await fetch(OVT_RECENT_ENDPOINT, { cache: 'no-store' });
     const data = await res.json();
     if(!res.ok || !data.ok) throw new Error();
-    if(!data.posts.length){ list.textContent = '게시된 글이 없어요.'; return; }
-    list.innerHTML = data.posts.map(p=>{
-      const future = p.status === 'future';
-      const when = future ? `<span class="wait">${escapeHtml(p.date)} 예약</span>` : `<span class="ok">블로그 ✓</span>`;
-      return `<div class="item"><a href="${escapeHtml(p.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(p.title)}</a><br>`
-        + `${when} · ${socialBadge('페이스북', p.facebook, future)} · ${socialBadge('인스타그램', p.instagram, future)}</div>`;
-    }).join('');
+    recentPosts = data.posts;
+    renderRecentList();
   }catch(e){
-    list.textContent = '상태를 불러오지 못했어요.';
+    document.getElementById('recentList').textContent = '상태를 불러오지 못했어요.';
+  }
+}
+
+async function retrySocial(id){
+  const before = recentPosts.find(p => p.id === id);
+  const baseline = before ? before.rechecked_at : '';
+  retrying.add(id);
+  delete retryNote[id];
+  renderRecentList();
+  try{
+    const res = await fetch(OVT_RETRY_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ post_id: id })
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok){ retryNote[id] = data.message || `다시 시도하지 못했어요 (${res.status})`; return; }
+    if(data.nothing){ retryNote[id] = '이미 모두 성공했어요.'; await loadRecentStatus(); return; }
+
+    // the job runs in the background on the server: wait until it reports done (about 4 minutes at most)
+    for(let i = 0; i < 30; i++){
+      await new Promise(r => setTimeout(r, 8000));
+      await loadRecentStatus();
+      const p = recentPosts.find(x => x.id === id);
+      if(p && !p.busy && (p.rechecked_at || '') !== baseline) break;
+    }
+    const p = recentPosts.find(x => x.id === id);
+    if(p && socialOk(p.facebook) && socialOk(p.instagram)) retryNote[id] = '✓ 다시 올렸어요.';
+    else if(p && (p.rechecked_at || '') === baseline) retryNote[id] = '아직 처리되지 않았어요. 잠시 후 새로고침을 눌러 확인해주세요.';
+    else retryNote[id] = '다시 시도했지만 실패가 남아 있어요. ✗에 마우스를 올리면 이유가 보여요. 잠시 후 다시 눌러보세요.';
+  }catch(e){
+    retryNote[id] = '다시 시도하지 못했어요 (네트워크 오류)';
+  }finally{
+    retrying.delete(id);
+    renderRecentList();
   }
 }
 
