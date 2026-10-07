@@ -194,6 +194,12 @@
         <button id="redoBtn" class="icon" title="다시 실행 (Ctrl+Y)" disabled>↷</button>
         <a class="btn icon" href="https://byraju.mycafe24.com/wp" target="_blank" rel="noopener noreferrer" title="워드프레스 바로가기">↗</a>
       </div>
+      <div id="saveDirRow" class="hint" style="display:none;">
+        내보내기 저장 위치: <b id="saveDirName">브라우저 다운로드 폴더</b>
+        <button class="small" id="saveDirBtn">폴더 지정</button>
+        <button class="small" id="saveDirClear" style="display:none;">해제</button>
+        <div id="saveDirMsg"></div>
+      </div>
       <div id="wpStatus" class="hint"></div>
       <div id="recentStatus" class="recent">
         <div class="head"><strong>최근 게시 상태</strong><button class="small" id="recentRefresh">새로고침</button></div>
@@ -1538,7 +1544,80 @@ document.addEventListener('keydown', e=>{ if(e.key === 'Escape') closeQtModal();
 
 function pad(n){ return String(n).padStart(2,'0'); }
 
-async function saveBlob(filename, blob){
+// ---- export folder ----
+// A web page can't write to a path of its own choosing. Where the browser
+// supports it (desktop Chrome/Edge), the user picks a folder once; the
+// handle is remembered in IndexedDB and exports are written straight into it.
+// Everywhere else (iPad Safari, no folder picked, permission refused) the
+// normal browser download is used.
+
+const exportDir = { handle: null };
+
+function openSettingsDb(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open('ovt-settings', 1);
+    req.onupgradeneeded = ()=> req.result.createObjectStore('kv');
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+}
+async function settingsGet(key){
+  const db = await openSettingsDb();
+  return new Promise((resolve, reject)=>{
+    const q = db.transaction('kv').objectStore('kv').get(key);
+    q.onsuccess = ()=> resolve(q.result);
+    q.onerror = ()=> reject(q.error);
+  });
+}
+async function settingsSet(key, value){
+  const db = await openSettingsDb();
+  return new Promise((resolve, reject)=>{
+    const tx = db.transaction('kv', 'readwrite');
+    value === undefined ? tx.objectStore('kv').delete(key) : tx.objectStore('kv').put(value, key);
+    tx.oncomplete = resolve;
+    tx.onerror = ()=> reject(tx.error);
+  });
+}
+
+function refreshExportDirUI(){
+  const row = document.getElementById('saveDirRow');
+  if(!window.showDirectoryPicker){ row.style.display = 'none'; return; }
+  row.style.display = '';
+  document.getElementById('saveDirName').textContent = exportDir.handle ? exportDir.handle.name : '브라우저 다운로드 폴더';
+  document.getElementById('saveDirBtn').textContent = exportDir.handle ? '폴더 변경' : '폴더 지정';
+  document.getElementById('saveDirClear').style.display = exportDir.handle ? '' : 'none';
+}
+
+function exportDirMessage(text, bad){
+  const el = document.getElementById('saveDirMsg');
+  el.textContent = text;
+  el.style.color = bad ? '#ffb4c1' : '';
+  clearTimeout(exportDirMessage.timer);
+  if(text) exportDirMessage.timer = setTimeout(()=>{ el.textContent = ''; }, 8000);
+}
+
+// Must run from a click handler: asking for write access needs a user gesture.
+async function ensureExportDirAccess(){
+  const dir = exportDir.handle;
+  if(!dir) return false;
+  try{
+    let perm = await dir.queryPermission({ mode: 'readwrite' });
+    if(perm !== 'granted') perm = await dir.requestPermission({ mode: 'readwrite' });
+    return perm === 'granted';
+  }catch(e){ return false; }
+}
+
+// 'folder' when the file went into the chosen folder, otherwise 'download'
+async function saveBlob(filename, blob, useFolder){
+  if(useFolder && exportDir.handle){
+    try{
+      const file = await exportDir.handle.getFileHandle(filename, { create: true });
+      const w = await file.createWritable();
+      await w.write(blob);
+      await w.close();
+      return 'folder';
+    }catch(e){ /* folder deleted/moved or write refused: fall back to a download */ }
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;
@@ -1546,7 +1625,30 @@ async function saveBlob(filename, blob){
   a.click();
   a.remove();
   setTimeout(()=>URL.revokeObjectURL(a.href), 3000);
+  return 'download';
 }
+
+(function setupExportDir(){
+  if(!window.showDirectoryPicker) return;
+  document.getElementById('saveDirBtn').addEventListener('click', async ()=>{
+    try{
+      const handle = await window.showDirectoryPicker({ id: 'oneverse-export', mode: 'readwrite', startIn: 'desktop' });
+      exportDir.handle = handle;
+      await settingsSet('exportDir', handle).catch(()=>{});
+      refreshExportDirUI();
+      exportDirMessage(`'${handle.name}' 폴더에 저장하도록 설정했어요.`);
+    }catch(e){
+      if(e && e.name !== 'AbortError') exportDirMessage('폴더를 지정하지 못했어요. 바탕 화면 같은 시스템 폴더 대신 그 안의 폴더를 골라주세요.', true);
+    }
+  });
+  document.getElementById('saveDirClear').addEventListener('click', async ()=>{
+    exportDir.handle = null;
+    await settingsSet('exportDir', undefined).catch(()=>{});
+    refreshExportDirUI();
+    exportDirMessage('폴더 지정을 해제했어요. 이제 브라우저 다운로드 폴더로 저장돼요.');
+  });
+  settingsGet('exportDir').then(h=>{ if(h) exportDir.handle = h; }).catch(()=>{}).finally(refreshExportDirUI);
+})();
 
 function canvasToBlob(canvas){
   return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
@@ -1569,19 +1671,29 @@ async function exportImage(){
   const savedVisible1 = state.layers[1].visible;
   const base = dateFilenameBase();
   state.guide = {x:false,y:false};
+  // first thing, while the click's user gesture is still fresh
+  const useFolder = await ensureExportDirAccess();
+  if(exportDir.handle && !useFolder) exportDirMessage('폴더에 쓰기 권한이 없어 다운로드 폴더로 저장했어요.', true);
 
   try{
     state.layers[0].visible = true;
     state.layers[1].visible = false;
     render();
     const blob1 = await canvasToBlob(canvas);
-    await saveBlob(`${base}-1.jpg`, blob1);
+    const where1 = await saveBlob(`${base}-1.jpg`, blob1, useFolder);
 
     state.layers[0].visible = false;
     state.layers[1].visible = true;
     render();
     const blob2 = await canvasToBlob(canvas);
-    await saveBlob(`${base}-2.jpg`, blob2);
+    const where2 = await saveBlob(`${base}-2.jpg`, blob2, useFolder);
+
+    if(useFolder){
+      const all = where1 === 'folder' && where2 === 'folder';
+      exportDirMessage(all
+        ? `✓ '${exportDir.handle.name}' 폴더에 저장했어요: ${base}-1.jpg, ${base}-2.jpg (같은 이름이 있으면 덮어씁니다)`
+        : `폴더에 저장하지 못한 파일이 있어 다운로드 폴더로 저장했어요. 폴더가 지워졌거나 옮겨졌다면 '폴더 변경'으로 다시 지정해주세요.`, !all);
+    }
   } finally {
     state.layers[0].visible = savedVisible0;
     state.layers[1].visible = savedVisible1;
