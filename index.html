@@ -350,7 +350,7 @@ function layerMeasure(layer){
 // than this stays on the line instead of wrapping on its own; justified text
 // is then squeezed back to the exact width, other alignments run a few pixels
 // long. Covers whatever measuring difference is left between browsers.
-const WRAP_TOLERANCE = 0.04;
+const WRAP_TOLERANCE = 0.015;
 
 function wrapText(measure, text, maxWidth){
   if(text === '') return [''];
