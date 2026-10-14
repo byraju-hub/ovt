@@ -322,13 +322,44 @@ function clampBg(){
   state.bg.dy = Math.min(0, Math.max(CANVAS_SIZE-drawH, state.bg.dy));
 }
 
-function wrapText(ctx, text, maxWidth){
+// Line breaking measures glyphs at a large size and scales the result down,
+// instead of measuring at the drawn size. Browsers disagree by a fixed amount
+// per glyph: Safari's synthetic bold (fonts with no real bold face, such as
+// Poor Story) adds about 1px to every glyph, which at 40px is enough to push
+// the last character of a line typed by hand onto a line of its own. At
+// 1000px that offset no longer matters, and Chrome's results stay the same.
+const MEASURE_PX = 1000;
+const measureCtx = document.createElement('canvas').getContext('2d');
+let measureFont = '';
+
+function fontSpec(layer, size){
+  return `${layer.italic?'italic ':''}${layer.bold?'700':'400'} ${size}px "${layer.fontFamily}"`;
+}
+
+function layerMeasure(layer){
+  const spec = fontSpec(layer, MEASURE_PX), k = layer.fontSize / MEASURE_PX;
+  // set afresh on every render so a web font that finished loading is picked up
+  measureCtx.font = spec; measureFont = spec;
+  return t => {
+    if(measureFont !== spec){ measureCtx.font = spec; measureFont = spec; }
+    return measureCtx.measureText(t).width * k;
+  };
+}
+
+// The end of a typed line (a paragraph) that overruns the width by no more
+// than this stays on the line instead of wrapping on its own; justified text
+// is then squeezed back to the exact width, other alignments run a few pixels
+// long. Covers whatever measuring difference is left between browsers.
+const WRAP_TOLERANCE = 0.04;
+
+function wrapText(measure, text, maxWidth){
   if(text === '') return [''];
+  if(measure(text) <= maxWidth * (1 + WRAP_TOLERANCE)) return [text];
   const splitLong = (word)=>{
     const chunks=[]; let chunk='';
     for(const ch of word){
       const t = chunk+ch;
-      if(ctx.measureText(t).width>maxWidth && chunk!==''){ chunks.push(chunk); chunk=ch; }
+      if(measure(t)>maxWidth && chunk!==''){ chunks.push(chunk); chunk=ch; }
       else chunk=t;
     }
     if(chunk!=='') chunks.push(chunk);
@@ -338,9 +369,9 @@ function wrapText(ctx, text, maxWidth){
   const lines=[]; let cur='';
   for(const w of words){
     const test = cur ? cur+' '+w : w;
-    if(ctx.measureText(test).width<=maxWidth){ cur=test; continue; }
+    if(measure(test)<=maxWidth){ cur=test; continue; }
     if(cur!=='') lines.push(cur);
-    if(ctx.measureText(w).width>maxWidth){
+    if(measure(w)>maxWidth){
       const parts = splitLong(w);
       for(let i=0;i<parts.length-1;i++) lines.push(parts[i]);
       cur = parts[parts.length-1] || '';
@@ -352,15 +383,19 @@ function wrapText(ctx, text, maxWidth){
   return lines.length ? lines : [''];
 }
 
-function wrapTextByChar(ctx, text, maxWidth){
+function wrapTextByChar(measure, text, maxWidth){
   if(text === '') return [''];
+  const limit = maxWidth * (1 + WRAP_TOLERANCE);
   const chars = Array.from(text);
   const lines = []; let cur = '';
-  for(const ch of chars){
-    const test = cur + ch;
-    if(ctx.measureText(test).width > maxWidth && cur !== ''){
+  for(let i = 0; i < chars.length; i++){
+    const test = cur + chars[i];
+    if(measure(test) > maxWidth && cur !== ''){
+      // the rest of this typed line only just overruns: keep it here
+      const rest = cur + chars.slice(i).join('');
+      if(measure(rest) <= limit){ cur = rest; break; }
       lines.push(cur);
-      cur = ch;
+      cur = chars[i];
     } else {
       cur = test;
     }
@@ -370,20 +405,21 @@ function wrapTextByChar(ctx, text, maxWidth){
 }
 
 function layerLines(ctx, layer){
-  ctx.font = `${layer.italic?'italic ':''}${layer.bold?'700':'400'} ${layer.fontSize}px "${layer.fontFamily}"`;
+  ctx.font = fontSpec(layer, layer.fontSize);
+  const measure = layerMeasure(layer);
   const paragraphs = layer.text.split('\n');
   let lines = [];
   // justified text wraps per syllable/character instead of per word, so every
   // line packs as tight as possible before the letter-spacing stretch kicks in.
   const wrapFn = layer.align === 'justify' ? wrapTextByChar : wrapText;
-  paragraphs.forEach(p => lines.push(...wrapFn(ctx, p, layer.maxWidth || MAX_TEXT_WIDTH)));
+  paragraphs.forEach(p => lines.push(...wrapFn(measure, p, layer.maxWidth || MAX_TEXT_WIDTH)));
   return lines;
 }
 
-function layoutJustifiedLine(ctx, line, startX, targetWidth){
+function layoutJustifiedLine(measure, line, startX, targetWidth){
   const chars = Array.from(line);
   if(chars.length <= 1) return chars.map(ch => ({ch, x:startX}));
-  const widths = chars.map(ch => ctx.measureText(ch).width);
+  const widths = chars.map(ch => measure(ch));
   const totalWidth = widths.reduce((a,b)=>a+b, 0);
   const gap = (targetWidth - totalWidth) / (chars.length - 1);
   let x = startX;
@@ -425,7 +461,7 @@ function drawLayer(ctx, layer){
     const ly = topY + i*lineHeightPx;
 
     const positions = (layer.align==='justify' && line.length>0)
-      ? layoutJustifiedLine(ctx, line, lx, blockWidth)
+      ? layoutJustifiedLine(layerMeasure(layer), line, lx, blockWidth)
       : null;
 
     if(layer.strokeEnabled && layer.strokeWidth>0){
