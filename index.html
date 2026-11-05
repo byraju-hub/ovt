@@ -17,7 +17,8 @@
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans KR",system-ui,sans-serif;font-size:14px;}
   header{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:12px;}
-  header h1{font-size:18px;margin:0;letter-spacing:.3px;}
+  header h1{font-size:18px;margin:0;letter-spacing:.3px;display:inline-flex;align-items:center;gap:8px;}
+  header h1 svg{width:22px;height:22px;flex:none;color:var(--accent);fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
   header p{margin:0;color:var(--sub);font-size:12.5px;}
   #saveIndicator{margin-left:auto;color:var(--sub);font-size:12px;white-space:nowrap;}
   main{padding:20px 24px 60px;max-width:1200px;margin:0 auto;}
@@ -116,7 +117,7 @@
 <body>
 
 <header>
-  <h1>OVT</h1>
+  <h1><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.8C10 5.2 7 4.7 3.8 5.1v12.4c3.2-.4 6.2.1 8.2 1.7 2-1.6 5-2.1 8.2-1.7V5.1C17 4.7 14 5.2 12 6.8Z"/><path d="M12 6.8v12.4"/></svg>OVT</h1>
   <p>One Verse Tool — 묵상 IMG 제작 도구</p>
   <div id="saveIndicator">저장된 내용 없음</div>
 </header>
