@@ -56,18 +56,20 @@ function qt_text($html) {
     return trim(preg_replace('/\s+/u', ' ', $t));
 }
 
-// "*2612 본문 1 사 1:1~9 2 ..." -> [day => [book, range]], or null with $err set
+// "*2612 본문 1일 고후 6:1~13 2일 ... 23일 성탄절 QT 사 11:1~9 ..." (older notices: "1 몬 1:1~14 2 ...")
+// -> [day => [book, range, label]], or null with $err set. The day may carry a trailing 일,
+// and a special day may carry a label such as "성탄절 QT" in front of the book.
 function qt_parse_notice($text, $ym, $names, &$err) {
     if (!preg_match('/\*(\d{2})(\d{2}) 본문 /u', $text, $m, PREG_OFFSET_CAPTURE)) { $err = "'*YYMM 본문' 표시를 찾지 못했어요"; return null; }
     if ('20' . $m[1][0] . '-' . $m[2][0] !== $ym) { $err = "공지 제목의 달($ym)과 본문 표시(*{$m[1][0]}{$m[2][0]})가 달라요"; return null; }
     $pos = $m[0][1] + strlen($m[0][0]);
-    $re = '/\G(\d+) ([^\s\d]+) (\d+:\d+(?:~(?:\d+:)?\d+)?|\d+(?:~\d+)?장)(?: |$)/u';
+    $re = '/\G(\d+)일? (?:([^\s\d]+) QT )?([^\s\d]+) (\d+:\d+(?:~(?:\d+:)?\d+)?|\d+(?:~\d+)?장)(?: |$)/u';
     $days = []; $prev = 0;
     while (preg_match($re, $text, $x, PREG_OFFSET_CAPTURE, $pos)) {
         $d = (int) $x[1][0];
         if ($d !== $prev + 1) { $err = "날짜 번호가 이어지지 않아요 ($prev 다음 $d)"; return null; }
-        if (!isset($names[$x[2][0]])) { $err = "알 수 없는 책 약칭 '{$x[2][0]}' ({$d}일)"; return null; }
-        $days[$d] = [$names[$x[2][0]], $x[3][0]];
+        if (!isset($names[$x[3][0]])) { $err = "알 수 없는 책 약칭 '{$x[3][0]}' ({$d}일)"; return null; }
+        $days[$d] = [$names[$x[3][0]], $x[4][0], $x[2][0] !== '' ? $x[2][0] . ' QT' : ''];
         $prev = $d;
         $pos = $x[0][1] + strlen($x[0][0]);
     }
@@ -126,9 +128,10 @@ foreach ($notices as $ym => $sn) {
     $err = '';
     $days = qt_parse_notice(qt_text($page), $ym, $names, $err);
     if ($days === null) { $errors[] = ['month' => $ym, 'sn' => $sn, 'reason' => $err]; continue; }
-    foreach ($days as $d => [$book, $range]) {
+    foreach ($days as $d => [$book, $range, $label]) {
         $key = sprintf('%s-%02d', $ym, $d);
-        $cal[$key] = ['book' => $book, 'range' => $range, 'title' => $cal[$key]['title'] ?? ''];
+        $title = $cal[$key]['title'] ?? '';
+        $cal[$key] = ['book' => $book, 'range' => $range, 'title' => $title !== '' ? $title : $label];
     }
     $added[] = ['month' => $ym, 'days' => count($days), 'sn' => $sn];
 }

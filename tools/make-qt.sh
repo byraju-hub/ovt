@@ -6,8 +6,10 @@
 #   tools/make-qt.sh <sn> [<sn>...]  add those notices' months to the calendar file
 #                                    (sn = number in notice_detail.asp?sn=NNNN)
 #
-# A notice reads "*2611 본문 1 몬 1:1~14 2 몬 1:15~25 ..." — day number, book
-# abbreviation (the "short" names in bible.json), passage. Anything that does
+# A notice reads "*2611 본문 1 몬 1:1~14 2 몬 1:15~25 ..." — day number (newer
+# notices write "1일"), book abbreviation (the "short" names in bible.json),
+# passage; a special day may carry a label first ("23일 성탄절 QT 사 11:1~9"),
+# which becomes that day's title. Anything that does
 # not fit that pattern aborts without touching the file, so a changed notice
 # layout is noticed instead of silently producing a wrong calendar.
 # Dates already in the file are replaced (their title, if any, is kept).
@@ -54,6 +56,10 @@ for sn in "$@"; do
   yy=${code:0:2}; mm=${code:2:2}
 
   body=$(grep -oE "\*$code 본문 .*" "$TMP/page.txt" | head -1 | sed -E "s/^\*$code 본문 //; s/ +$//")
+  # "1일" -> "1"; a label such as "성탄절 QT" is taken out and kept as the day's title
+  body=$(printf '%s' "$body" | sed -E 's/(^| )([0-9]+)일 /\1\2 /g')
+  printf '%s' "$body" | grep -oE '[0-9]+ [^ 0-9]+ QT ' | sed -E 's/^([0-9]+) (.*) $/\1\t\2/' > "$TMP/labels.tsv" || true
+  body=$(printf '%s' "$body" | sed -E 's/ [^ 0-9]+ QT / /g')
   items=$(printf '%s\n' "$body" | grep -oE '[0-9]+ [^ 0-9]+ ([0-9]+:[0-9]+(~([0-9]+:)?[0-9]+)?|[0-9]+(~[0-9]+)?장)' || true)
   rebuilt=$(printf '%s\n' "$items" | tr '\n' ' ' | sed -E 's/ +$//')
   # the match must account for the whole list, with nothing left over
@@ -69,7 +75,8 @@ for sn in "$@"; do
     [ -n "$name" ] || { echo "sn=$sn: 알 수 없는 책 약칭 '$abbr' (날짜 $day)" >&2; exit 2; }
     [ "$day" -eq $((prev + 1)) ] || { echo "sn=$sn: 날짜 번호가 이어지지 않습니다 ($prev 다음 $day)" >&2; exit 2; }
     prev=$day; days=$((days + 1))
-    printf '20%s-%s-%02d\t%s\t%s\t\n' "$yy" "$mm" "$day" "$name" "$range" >> "$TMP/new.tsv"
+    label=$(awk -F'\t' -v d="$day" '$1==d{print $2; exit}' "$TMP/labels.tsv")
+    printf '20%s-%s-%02d\t%s\t%s\t%s\n' "$yy" "$mm" "$day" "$name" "$range" "$label" >> "$TMP/new.tsv"
   done <<< "$items"
   last=$(date -d "20$yy-$mm-01 +1 month -1 day" +%d 2>/dev/null || echo "$days")
   [ "$days" -eq "$((10#$last))" ] || { echo "sn=$sn: 20$yy-$mm 은 ${last}일까지인데 본문은 ${days}일치입니다." >&2; exit 2; }
@@ -79,7 +86,7 @@ done
 # merge (new wins, old title kept), sort by date, write in the file's own layout
 awk -F'\t' '
   NR==FNR { book[$1]=$2; range[$1]=$3; title[$1]=$4; seen[$1]=1; next }
-  { if(!($1 in seen)) title[$1]=""; book[$1]=$2; range[$1]=$3; seen[$1]=1 }
+  { if(!($1 in seen)) title[$1]=$4; else if(title[$1]=="") title[$1]=$4; book[$1]=$2; range[$1]=$3; seen[$1]=1 }
   END {
     n=0; for(d in seen) keys[++n]=d
     for(i=2;i<=n;i++){ v=keys[i]; j=i-1; while(j>0 && keys[j]>v){ keys[j+1]=keys[j]; j-- } keys[j+1]=v }
