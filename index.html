@@ -431,6 +431,18 @@ function layoutJustifiedLine(measure, line, startX, targetWidth){
   });
 }
 
+const colorProbe = document.createElement('canvas').getContext('2d');
+function isBlackShadow(color){
+  colorProbe.fillStyle = '#fff'; colorProbe.fillStyle = color;
+  const v = colorProbe.fillStyle;
+  return v === '#000000' || /^rgba\(0, 0, 0,/.test(v);
+}
+let shadowSheet = null;
+function shadowScratch(){
+  if(!shadowSheet){ shadowSheet = document.createElement('canvas'); shadowSheet.width = CANVAS_SIZE; shadowSheet.height = CANVAS_SIZE; }
+  return shadowSheet;
+}
+
 function drawLayer(ctx, layer){
   const lines = layerLines(ctx, layer);
   const lineHeightPx = layer.fontSize * layer.lineHeight;
@@ -482,17 +494,39 @@ function drawLayer(ctx, layer){
       // shadowOffsetX brings only their shadow back into view, composited
       // with multiply. The visible fill below is then drawn with no shadow.
       const OFF = CANVAS_SIZE * 2;
-      ctx.shadowColor = layer.shadowColor;
-      ctx.shadowBlur = layer.shadowBlur;
-      ctx.shadowOffsetX = OFF;
-      ctx.shadowOffsetY = 0;
-      ctx.globalCompositeOperation = 'multiply';
-      if(positions) positions.forEach(p => ctx.fillText(p.ch, p.x - OFF, ly));
-      else ctx.fillText(line, lx - OFF, ly);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetX = 0;
+      const drawShadowGlyphs = c => {
+        c.shadowColor = layer.shadowColor;
+        c.shadowBlur = layer.shadowBlur;
+        c.shadowOffsetX = OFF;
+        c.shadowOffsetY = 0;
+        if(positions) positions.forEach(p => c.fillText(p.ch, p.x - OFF, ly));
+        else c.fillText(line, lx - OFF, ly);
+        c.shadowColor = 'transparent';
+        c.shadowBlur = 0;
+        c.shadowOffsetX = 0;
+      };
+      if(ctx.canvas.id !== 'canvas'){
+        // scratch canvas (the drag picture): nothing underneath, so plain blending shows the shadow
+        drawShadowGlyphs(ctx);
+      } else if(isBlackShadow(layer.shadowColor)){
+        // Same result as multiplying every glyph's shadow one by one (multiplying is order-free,
+        // and a black shadow over white is exactly "1 - alpha"), but the shadows are collected on
+        // a white sheet with ordinary blending and multiplied onto the picture once per line.
+        // Multiply blending per glyph is what made this layer so slow.
+        const sc = shadowScratch(), sx = sc.getContext('2d');
+        sx.globalCompositeOperation = 'source-over';
+        sx.fillStyle = '#fff';
+        sx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+        sx.font = ctx.font; sx.textBaseline = 'top'; sx.fillStyle = layer.color;
+        drawShadowGlyphs(sx);
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.drawImage(sc, 0, 0);
+        ctx.globalCompositeOperation = 'source-over';
+      } else {
+        ctx.globalCompositeOperation = 'multiply';
+        drawShadowGlyphs(ctx);
+        ctx.globalCompositeOperation = 'source-over';
+      }
     } else if(layer.shadowEnabled){
       ctx.shadowColor = layer.shadowColor;
       ctx.shadowBlur = layer.shadowBlur;
@@ -582,7 +616,7 @@ function render(){
     ctx.fillRect(0,0,CANVAS_SIZE,CANVAS_SIZE);
   }
 
-  state.layers.forEach(layer => drawLayer(ctx, layer));
+  state.layers.forEach((layer, i) => fastLayers ? drawLayerCached(ctx, layer, i) : drawLayer(ctx, layer));
   updateOverflowWarning();
   updateCharCount();
 
@@ -595,6 +629,28 @@ function render(){
     if(state.guide.y){ ctx.beginPath(); ctx.moveTo(0,CANVAS_SIZE/2); ctx.lineTo(CANVAS_SIZE,CANVAS_SIZE/2); ctx.stroke(); }
     ctx.restore();
   }
+}
+
+// While the photo is being dragged the text layers do not change, but redrawing them is
+// expensive (a blurred shadow per character, multiply blending). So during that drag a
+// finished picture of each layer is reused instead; letting go redraws everything exactly.
+// (The picture is made on a transparent canvas, so a "multiply" shadow shows as a normal
+// one for the duration of the drag only. Exported images never use this path.)
+let fastLayers = false;
+const layerCache = new Map();
+
+function drawLayerCached(ctx, layer, i){
+  if(!layer.visible || !(layer.text||'').trim() || !(layer.shadowEnabled || layer.strokeEnabled)){ drawLayer(ctx, layer); return; }
+  const key = JSON.stringify(layer, (k, v) => k === '_bbox' ? undefined : v);
+  let hit = layerCache.get(i);
+  if(!hit || hit.key !== key){
+    const c = document.createElement('canvas');
+    c.width = CANVAS_SIZE; c.height = CANVAS_SIZE;
+    drawLayer(c.getContext('2d'), layer);
+    hit = { key, canvas: c };
+    layerCache.set(i, hit);
+  }
+  ctx.drawImage(hit.canvas, 0, 0);
 }
 
 // Both text layers end up in an exported image (one each) even while hidden
@@ -642,6 +698,7 @@ function setupCanvasDrag(){
       dragging = { type:'layer', layerIndex, start:pt, startX:layer.x, startY:layer.y };
     } else if(state.bg.img){
       dragging = { type:'bg', start:pt, startDx:state.bg.dx, startDy:state.bg.dy };
+      fastLayers = true;
     } else {
       return;
     }
@@ -679,6 +736,8 @@ function setupCanvasDrag(){
   const end = ()=>{
     if(!dragging) return;
     state.guide = {x:false,y:false};
+    fastLayers = false;
+    layerCache.clear();
     render();
     dragging = null;
     canvas.classList.remove('dragging');
@@ -2513,6 +2572,57 @@ loadState();
 loadFixedBibleData();
 loadRecentStatus();
 document.getElementById('recentRefresh').addEventListener('click', loadRecentStatus);
+</script>
+<script>
+// Diagnostics: only runs when the address ends in ?debug=1 (nothing happens otherwise).
+// A small readout at the bottom-left: how long drawing takes, slow keystrokes/clicks,
+// long main-thread stalls, slow network calls and font downloads. "복사" copies a report.
+(function(){
+  if(!/[?&]debug=1(&|$)/.test(location.search)) return;
+  var rT=[], stalls=[], slowIn=[], net=[], frames=[], fonts=[], log=[], t0=performance.now();
+  function add(kind, ms, what){ log.push(((performance.now()-t0)/1000).toFixed(1)+'s '+kind+' '+Math.round(ms)+'ms'+(what?' '+what:'')); if(log.length>80) log.shift(); }
+  function mx(a){ return a.length ? Math.max.apply(null,a) : 0; }
+  function avg(a){ return a.length ? a.reduce(function(x,y){return x+y;},0)/a.length : 0; }
+  var _render = window.render;
+  if(typeof _render === 'function'){
+    window.render = function(){ var t=performance.now(); var v=_render.apply(this,arguments); var d=performance.now()-t; rT.push(d); if(rT.length>60) rT.shift(); if(d>30) add('render', d); return v; };
+  }
+  var _fetch = window.fetch;
+  window.fetch = function(u, o){
+    var t=performance.now(), name=String(u).replace(location.origin,'').replace(/^.*route=/,'').split('&')[0].slice(0,40);
+    return _fetch.apply(this, arguments).then(function(r){ var d=performance.now()-t; net.push(d); if(d>400) add('net', d, name); return r; });
+  };
+  function watch(type, opts, fn){ try{ var po=new PerformanceObserver(function(l){ l.getEntries().forEach(fn); }); opts.type=type; opts.buffered=true; po.observe(opts); }catch(e){} }
+  watch('longtask', {}, function(e){ stalls.push(e.duration); add('stall', e.duration); });
+  watch('event', {durationThreshold:40}, function(e){ slowIn.push(e.duration); add('slow '+e.name, e.duration); });
+  watch('resource', {}, function(e){ if(/gstatic\.com|fonts\.googleapis/.test(e.name)){ fonts.push(e.duration); if(e.duration>500) add('font', e.duration, e.name.split('/').pop().slice(0,24)); } });
+  var last=performance.now();
+  (function tick(){ var n=performance.now(); if(document.visibilityState==='visible' && n-last>100){ frames.push(n-last); add('frame gap', n-last); } last=n; requestAnimationFrame(tick); })();
+  var box=document.createElement('div');
+  box.setAttribute('role','status');
+  box.style.cssText='position:fixed;left:8px;bottom:8px;z-index:99999;background:rgba(0,0,0,.85);color:#9ef;font:12px/1.5 ui-monospace,Consolas,monospace;padding:8px 10px;border-radius:8px;white-space:pre;max-width:92vw';
+  var txt=document.createElement('span'); var btn=document.createElement('button');
+  btn.textContent='복사'; btn.type='button'; btn.style.cssText='display:block;margin-top:6px;font:12px inherit;cursor:pointer';
+  box.appendChild(txt); box.appendChild(btn); document.body.appendChild(box);
+  function summary(){
+    var heap = performance.memory ? Math.round(performance.memory.usedJSHeapSize/1048576)+'MB' : '-';
+    return [
+      '그리기 render  평균 '+avg(rT).toFixed(1)+'ms · 최대 '+mx(rT).toFixed(1)+'ms ('+rT.length+'회)',
+      '멈춤 (>50ms)  '+stalls.length+'회 · 최대 '+Math.round(mx(stalls))+'ms',
+      '느린 입력 (>40ms)  '+slowIn.length+'회 · 최대 '+Math.round(mx(slowIn))+'ms',
+      '화면 끊김 (>100ms)  '+frames.length+'회 · 최대 '+Math.round(mx(frames))+'ms',
+      '네트워크  '+net.length+'건 · 평균 '+Math.round(avg(net))+'ms · 최대 '+Math.round(mx(net))+'ms',
+      '글꼴 파일  '+fonts.length+'개 · 최대 '+Math.round(mx(fonts))+'ms',
+      '메모리 '+heap+' · '+navigator.hardwareConcurrency+'코어'
+    ].join('\n');
+  }
+  setInterval(function(){ txt.textContent=summary(); }, 500);
+  btn.addEventListener('click', function(){
+    var rep=summary()+'\n\n최근 기록:\n'+log.join('\n');
+    var done=function(ok){ btn.textContent=ok?'복사됨':'복사 실패'; setTimeout(function(){ btn.textContent='복사'; },1500); };
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(rep).then(function(){done(true);},function(){done(false);}); else done(false);
+  });
+})();
 </script>
 <script src="/stats/t.js" defer></script>
 </body>
