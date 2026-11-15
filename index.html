@@ -101,6 +101,19 @@
 
   footer{color:var(--sub);font-size:12px;text-align:center;padding:20px;}
   .hint{color:var(--sub);font-size:11.5px;margin-top:8px;}
+  #bgUsedMsg:empty{display:none;}
+  #bgUsedMsg.ok{color:#9fe3b4;}
+  .ph-inner{width:min(1000px,94vw);}
+  .ph-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .ph-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;padding:14px;overflow:auto;min-height:200px;grid-auto-rows:max-content;align-content:start;}
+  .ph{position:relative;display:block;padding:0;border:1px solid var(--line);border-radius:8px;background:#1b1c20;overflow:hidden;cursor:pointer;text-align:left;color:var(--sub);font-size:11px;}
+  .ph .ph-thumb{display:block;position:relative;width:100%;padding-top:100%;background:#25262b;overflow:hidden;transition:opacity .15s ease;}
+  .ph .ph-thumb canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  .ph .ph-name{display:block;padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ph.used .ph-thumb{opacity:.28;}
+  .ph.used .ph-name{opacity:.6;}
+  .ph .ph-badge{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.78);color:#ffd6de;border:1px solid var(--accent2);border-radius:999px;padding:1px 7px;font-size:10.5px;}
+  @media (hover:hover) and (pointer:fine){ .ph:hover{border-color:var(--accent);} .ph.used:hover .ph-thumb{opacity:.6;} }
   .warn{color:#ffb4c1;background:rgba(255,91,122,.12);border:1px solid var(--accent2);border-radius:6px;padding:6px 8px;font-size:12px;margin-top:8px;}
   .warn a{color:#ffd6de;}
   #qtUpdateMsg{font-size:12px;color:var(--sub);line-height:1.5;}
@@ -147,6 +160,9 @@
     <h2>배경 이미지</h2>
     <div class="row">
       <input type="file" id="bgFile" accept="image/*">
+      <button id="photoPickBtn" class="small" style="display:none;" title="사진 폴더를 펼쳐 놓고 고르기 (이미 사용한 사진은 흐리게 표시)">사진 폴더에서 고르기</button>
+    </div>
+    <div class="row">
       <span class="field">
         <label class="small">확대</label>
         <input type="range" id="zoomRange" min="1" max="3" step="0.01" value="1">
@@ -178,6 +194,7 @@
         <span id="saturationLabel" style="width:44px;color:var(--sub);font-size:12px;">100%</span>
       </span>
     </div>
+    <div id="bgUsedMsg" class="warn"></div>
     <div class="hint">캔버스를 드래그하면 배경 이미지를 이동할 수 있어요. 텍스트가 없는 빈 자리를 드래그하면 배경이, 텍스트 위를 드래그하면 그 텍스트 레이어가 움직입니다. 원본 비율은 항상 유지됩니다.</div>
   </section>
 
@@ -236,6 +253,19 @@
     <div class="modal-scroll">
       <img id="sizePreviewImg" width="1080" height="1080" alt="실제 사이즈 미리보기">
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="photoModal">
+  <div class="modal-inner ph-inner">
+    <div class="modal-header ph-bar">
+      <span id="photoDirName">사진 폴더</span>
+      <button class="small" id="photoDirChange">폴더 변경</button>
+      <label class="small" style="min-width:0;"><input type="checkbox" id="photoHideUsed"> 사용 안 한 사진만 보기</label>
+      <span id="photoCount"></span>
+      <button class="small" id="closePhotoModal" style="margin-left:auto;">닫기</button>
+    </div>
+    <div class="ph-grid" id="photoGrid"></div>
   </div>
 </div>
 
@@ -1181,6 +1211,197 @@ function buildAllPanels(){
   container.appendChild(buildCombinedCopyPanel(datePanel._textarea, hashtagPanel._textarea));
 }
 
+// ---------- photos already used ----------
+// Remembers the name + size of every background photo that was exported or
+// published, so picking the same file again is flagged. Only these short
+// records are stored (browser + one small server option); no photos are sent.
+
+const USED_LOCAL_KEY = 'ovt_used_photos';
+const USED_MAX = 3000;
+let usedMap = new Map();            // "name|size" -> { n, s, t }
+let usedInitialized = false;
+let bgSource = { name: null, size: 0 };   // file the current background came from
+
+const photoKey = (n, s)=> n + '|' + s;
+function parseUsed(raw){
+  try{ const v = JSON.parse(raw); return Array.isArray(v) ? v.filter(u => u && typeof u.n === 'string' && u.s >= 0) : null; }catch(e){ return null; }
+}
+function addUsedList(list){
+  (list || []).forEach(u=>{
+    const k = photoKey(u.n, u.s), cur = usedMap.get(k);
+    if(!cur || (u.t || 0) < (cur.t || 0)) usedMap.set(k, { n: u.n, s: u.s, t: u.t || 0 });
+  });
+}
+function storeUsed(){
+  const list = Array.from(usedMap.values()).sort((a, b)=> b.t - a.t).slice(0, USED_MAX);
+  usedMap = new Map(list.map(u => [photoKey(u.n, u.s), u]));
+  const raw = JSON.stringify(list);
+  try{ localStorage.setItem(USED_LOCAL_KEY, raw); }catch(e){}
+  fetch(OVT_STATE_SAVE_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slot: 'used', state: raw })
+  }).catch(()=>{});
+}
+// Server and this browser's lists are merged, so neither side loses records.
+function initUsed(serverRaw){
+  if(usedInitialized) return;
+  usedInitialized = true;
+  const server = serverRaw ? parseUsed(serverRaw) : null;
+  let local = null;
+  try{ local = parseUsed(localStorage.getItem(USED_LOCAL_KEY)); }catch(e){}
+  addUsedList(server); addUsedList(local);
+  const serverCount = server ? server.length : 0;
+  if(usedMap.size !== serverCount) storeUsed();
+  showBgUsedMsg();
+}
+const usedDate = t => { const d = new Date(t); return t ? (d.getMonth()+1) + '/' + d.getDate() : ''; };
+
+function showBgUsedMsg(markedNow){
+  const el = document.getElementById('bgUsedMsg');
+  if(!el) return;
+  el.className = 'warn'; el.textContent = '';
+  if(!bgSource.name) return;
+  const u = usedMap.get(photoKey(bgSource.name, bgSource.size));
+  if(markedNow){
+    el.className = 'hint ok';
+    el.textContent = '✓ 사용한 사진으로 기록했어요: ' + bgSource.name;
+  } else if(u){
+    el.innerHTML = '⚠ 이미 사용한 사진이에요 (' + escapeHtml(usedDate(u.t)) + '에 저장·발행): ' + escapeHtml(bgSource.name) + ' ';
+    const b = document.createElement('button');
+    b.className = 'small'; b.textContent = '사용 기록에서 빼기';
+    b.addEventListener('click', ()=>{ usedMap.delete(photoKey(bgSource.name, bgSource.size)); storeUsed(); showBgUsedMsg(); });
+    el.appendChild(b);
+  }
+}
+
+// Called after a successful export or publish.
+function markCurrentPhotoUsed(){
+  if(!bgSource.name) return;
+  const k = photoKey(bgSource.name, bgSource.size);
+  if(!usedMap.has(k)){
+    usedMap.set(k, { n: bgSource.name, s: bgSource.size, t: Date.now() });
+    storeUsed();
+  }
+  showBgUsedMsg(true);
+}
+
+// ---- photo folder picker (desktop Chrome/Edge)
+const photoDir = { handle: null, files: [] };
+const photoModal = document.getElementById('photoModal');
+const PHOTO_RE = /\.(jpe?g|png|webp|gif|bmp|avif)$/i;
+
+async function ensurePhotoDirAccess(){
+  const h = photoDir.handle;
+  if(!h) return false;
+  try{
+    let perm = await h.queryPermission({ mode: 'read' });
+    if(perm !== 'granted') perm = await h.requestPermission({ mode: 'read' });
+    return perm === 'granted';
+  }catch(e){ return false; }
+}
+async function choosePhotoDir(){
+  try{
+    const h = await window.showDirectoryPicker({ id: 'oneverse-photos', mode: 'read', startIn: 'pictures' });
+    photoDir.handle = h;
+    await settingsSet('photoDir', h).catch(()=>{});
+    return true;
+  }catch(e){ return false; }
+}
+
+async function openPhotoPicker(){
+  if(!photoDir.handle && !(await choosePhotoDir())) return;
+  if(!(await ensurePhotoDirAccess())){
+    if(!(await choosePhotoDir())) return;
+  }
+  photoModal.classList.add('open');
+  await renderPhotoGrid();
+}
+
+let photoThumbQueue = [], photoThumbBusy = 0, photoObserver = null;
+function pumpThumbs(){
+  while(photoThumbBusy < 3 && photoThumbQueue.length){
+    const job = photoThumbQueue.shift();
+    photoThumbBusy++;
+    job().finally(()=>{ photoThumbBusy--; pumpThumbs(); });
+  }
+}
+
+async function renderPhotoGrid(){
+  const grid = document.getElementById('photoGrid');
+  document.getElementById('photoDirName').textContent = '사진 폴더: ' + photoDir.handle.name;
+  grid.textContent = '불러오는 중…';
+  photoThumbQueue = [];
+  if(photoObserver) photoObserver.disconnect();
+  const handles = [];
+  try{
+    for await (const [name, h] of photoDir.handle.entries()){
+      if(h.kind === 'file' && PHOTO_RE.test(name)) handles.push(h);
+    }
+  }catch(e){ grid.textContent = '폴더를 읽지 못했어요. 폴더 변경으로 다시 지정해주세요.'; return; }
+  const files = (await Promise.all(handles.map(h => h.getFile().catch(()=>null)))).filter(Boolean);
+  files.sort((a, b)=> b.lastModified - a.lastModified);
+  photoDir.files = files;
+  paintPhotoGrid();
+}
+
+function paintPhotoGrid(){
+  const grid = document.getElementById('photoGrid');
+  const hideUsed = document.getElementById('photoHideUsed').checked;
+  grid.textContent = '';
+  photoThumbQueue = [];
+  if(photoObserver) photoObserver.disconnect();
+  photoObserver = new IntersectionObserver(entries=>{
+    entries.forEach(en=>{
+      if(!en.isIntersecting) return;
+      photoObserver.unobserve(en.target);
+      const btn = en.target, file = photoDir.files[Number(btn.dataset.i)];
+      photoThumbQueue.push(async ()=>{
+        try{
+          const bmp = await createImageBitmap(file, { resizeWidth: 240, resizeQuality: 'low' });
+          const c = document.createElement('canvas');
+          c.width = bmp.width; c.height = bmp.height;
+          c.getContext('2d').drawImage(bmp, 0, 0);
+          if(bmp.close) bmp.close();
+          btn.querySelector('.ph-thumb').appendChild(c);
+        }catch(e){ /* undecodable (e.g. HEIC): keep the file name box */ }
+      });
+      pumpThumbs();
+    });
+  }, { root: grid, rootMargin: '300px' });
+
+  let shown = 0, usedCount = 0;
+  photoDir.files.forEach((file, i)=>{
+    const u = usedMap.get(photoKey(file.name, file.size));
+    if(u) usedCount++;
+    if(hideUsed && u) return;
+    shown++;
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'ph' + (u ? ' used' : ''); btn.dataset.i = i;
+    btn.title = file.name + (u ? '  (이미 사용함 ' + usedDate(u.t) + ')' : '');
+    btn.innerHTML = '<span class="ph-thumb"></span><span class="ph-name"></span>' + (u ? '<span class="ph-badge">사용함 ' + escapeHtml(usedDate(u.t)) + '</span>' : '');
+    btn.querySelector('.ph-name').textContent = file.name;
+    btn.addEventListener('click', ()=>{ photoModal.classList.remove('open'); loadBgFile(file); });
+    grid.appendChild(btn);
+    photoObserver.observe(btn);
+  });
+  if(!shown) grid.textContent = photoDir.files.length ? '표시할 사진이 없어요 (모두 사용함).' : '이 폴더에는 사진 파일이 없어요 (하위 폴더는 보지 않아요).';
+  document.getElementById('photoCount').textContent = photoDir.files.length + '장 중 ' + usedCount + '장 사용함';
+}
+
+(function setupPhotoPicker(){
+  if(!window.showDirectoryPicker) return;
+  const pickBtn = document.getElementById('photoPickBtn');
+  pickBtn.style.display = '';
+  pickBtn.addEventListener('click', openPhotoPicker);
+  document.getElementById('closePhotoModal').addEventListener('click', ()=> photoModal.classList.remove('open'));
+  photoModal.addEventListener('click', e=>{ if(e.target === photoModal) photoModal.classList.remove('open'); });
+  document.addEventListener('keydown', e=>{ if(e.key === 'Escape' && photoModal.classList.contains('open')) photoModal.classList.remove('open'); });
+  document.getElementById('photoHideUsed').addEventListener('change', ()=>{ if(photoDir.files.length) paintPhotoGrid(); });
+  document.getElementById('photoDirChange').addEventListener('click', async ()=>{ if(await choosePhotoDir()) renderPhotoGrid(); });
+  settingsGet('photoDir').then(h=>{ if(h) photoDir.handle = h; }).catch(()=>{});
+})();
+
 // ---------- background controls ----------
 
 const BG_MAX_SHORT_SIDE = 1600;
@@ -1207,9 +1428,10 @@ function resizeIfNeeded(img, originalDataURL, callback){
   resizedImg.src = resizedDataURL;
 }
 
-document.getElementById('bgFile').addEventListener('change', e=>{
-  const file = e.target.files[0];
+function loadBgFile(file){
   if(!file || !file.type.startsWith('image/')) return;
+  bgSource = { name: file.name, size: file.size };
+  showBgUsedMsg();
   const reader = new FileReader();
   reader.onload = ev=>{
     const img = new Image();
@@ -1232,7 +1454,8 @@ document.getElementById('bgFile').addEventListener('change', e=>{
     img.src = ev.target.result;
   };
   reader.readAsDataURL(file);
-});
+}
+document.getElementById('bgFile').addEventListener('change', e=> loadBgFile(e.target.files[0]));
 
 document.getElementById('zoomRange').addEventListener('input', e=>{
   if(!state.bg.img) return;
@@ -1297,6 +1520,7 @@ document.getElementById('filterReset').addEventListener('click', ()=>{
 });
 
 document.getElementById('bgClear').addEventListener('click', ()=>{
+  bgSource = { name: null, size: 0 }; showBgUsedMsg();
   state.bg = { img:null, dataURL:null, natW:0, natH:0, zoom:1, dx:0, dy:0, brightness:100, contrast:100, saturation:100, overlay:0 };
   document.getElementById('bgFile').value = '';
   document.getElementById('zoomRange').value = 1;
@@ -1784,6 +2008,7 @@ async function exportImage(){
     const blob2 = await canvasToBlob(canvas);
     const where2 = await saveBlob(`${base}-2.jpg`, blob2, useFolder);
 
+    markCurrentPhotoUsed();
     if(useFolder){
       const all = where1 === 'folder' && where2 === 'folder';
       exportDirMessage(all
@@ -1988,6 +2213,7 @@ async function publishToWordPress(){
       const scheduled = data.social && data.social.scheduled_for;
       status.innerHTML = (scheduled ? `${post_date} 오전 7시 예약 완료 (블로그·페이스북·인스타그램): ` : '게시 완료: ')
         + '<a href="'+escapeHtml(data.link)+'" target="_blank" rel="noopener noreferrer">'+escapeHtml(data.link)+'</a>';
+      markCurrentPhotoUsed();
       loadRecentStatus();
     } else if(data.code === 'ovt_duplicate'){
       status.textContent = '게시 안 함: 이 날짜에 이미 글이 있어요. 버튼을 다시 눌러 확인해주세요.';
@@ -2282,7 +2508,7 @@ let serverSyncTimer = null;
 function buildSaveData(){
   return {
     ts: Date.now(),
-    bg: { dataURL: state.bg.dataURL, zoom: state.bg.zoom, dx: state.bg.dx, dy: state.bg.dy, brightness: state.bg.brightness, contrast: state.bg.contrast, saturation: state.bg.saturation, overlay: state.bg.overlay },
+    bg: { srcName: bgSource.name, srcSize: bgSource.size, dataURL: state.bg.dataURL, zoom: state.bg.zoom, dx: state.bg.dx, dy: state.bg.dy, brightness: state.bg.brightness, contrast: state.bg.contrast, saturation: state.bg.saturation, overlay: state.bg.overlay },
     layers: state.layers.map(stripLayer),
     copy: {
       date: dateTextareaEl ? dateTextareaEl.value : null,
@@ -2454,6 +2680,7 @@ function applyLoadedState(data, sourceLabel){
   }
   ensureLayerFonts();
 
+  bgSource = { name: (data.bg && data.bg.srcName) || null, size: (data.bg && data.bg.srcSize) || 0 };
   if(data.bg && data.bg.dataURL){
     const img = new Image();
     img.onload = ()=>{
@@ -2497,7 +2724,7 @@ async function loadState(){
     const res = await fetch(OVT_STATE_LOAD_ENDPOINT);
     if(res.ok){
       const json = await res.json();
-      if(json && json.ok) initPresets(json.presets);
+      if(json && json.ok){ initPresets(json.presets); initUsed(json.used); }
       if(json && json.ok && json.state){
         serverData = JSON.parse(json.state);
         serverBgSlot = json.bg || null;
@@ -2508,6 +2735,7 @@ async function loadState(){
     }
   }catch(e){}
   initPresets(null); // server unreachable: fall back to this browser's list
+  initUsed(null);
 
   let data = null, fromServer = false;
   if(serverData && localData){
